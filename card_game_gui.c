@@ -7,8 +7,8 @@
 #include <stdbool.h>
 
 // Window dimensions
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
+#define WINDOW_WIDTH 1000
+#define WINDOW_HEIGHT 800
 
 // Card dimensions
 #define CARD_WIDTH 80
