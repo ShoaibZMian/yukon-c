@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 
+
 // Window dimensions
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 800
