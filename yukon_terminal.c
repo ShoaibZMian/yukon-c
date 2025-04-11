@@ -17,7 +17,7 @@ typedef struct Card {
 typedef struct LocationTranslator {
 	char from_tab; // C || F
 	int from_index; // 1-7
-	char from_card[3]; // 5H
+	char from_card[5]; // Enough space for "10H" + '\0'
 
 	char to_tab; // C || F
 	int to_index; // 1-7
@@ -38,13 +38,33 @@ LocationTranslator* translate_command(const char* command) {
 	// command:
 	// C1->C4
 	// C2:5H->C5 where 5H is the card
+	// C3:AS->F1 for foundation piles
 
-	int parsed = sscanf(command, "%c%d:%2s->%c%d", &result->from_tab, &result->from_index, result->from_card, &result->to_tab, &result->to_index);
+	// Debug print to show the raw command
+	printf("Raw command: '%s'\n", command);
+
+	// Try to parse with card specified
+	int parsed = sscanf(command, "%c%d:%4[^->]->%c%d", 
+		&result->from_tab, &result->from_index, result->from_card, 
+		&result->to_tab, &result->to_index);
+
+	// Debug print to show parsing result
+	printf("Parsed with card: %d values\n", parsed);
 
 	if (parsed < 5) {
-		sscanf(command, "%c%d->%c%d", &result->from_tab, &result->from_index, &result->to_tab, &result->to_index);
-		strcpy(result->from_card, "  ");
+		// Try to parse without card specified
+		parsed = sscanf(command, "%c%d->%c%d", 
+			&result->from_tab, &result->from_index, 
+			&result->to_tab, &result->to_index);
+		
+		printf("Parsed without card: %d values\n", parsed);
+		strcpy(result->from_card, "");  // empty if no card rank typed
 	}
+
+	// Debug print to show final parsed values
+	printf("Final parsed values: from_tab=%c, from_index=%d, from_card='%s', to_tab=%c, to_index=%d\n",
+		result->from_tab, result->from_index, result->from_card, 
+		result->to_tab, result->to_index);
 
 	return result;
 }
@@ -269,25 +289,27 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 	}
 }
 
-char convert_to_char(int value) {
-	if (value == 1) {
-		return 'A';
-	}
-	else if (value == 11) {
-		return 'J';
-	}
-	else if (value == 12) {
-		return 'Q';
-	}
-	else if (value == 13) {
-		return 'K';
-	}
-	else {
-		return value <= 9 ? (value + '0') : 0;
-	}
+// Instead of returning a single char, build an entire string for the rank:
+void get_value_str(int value, char *value_str) {
+    if (value == 1) {
+        strcpy(value_str, "A");
+    }
+    else if (value == 11) {
+        strcpy(value_str, "J");
+    }
+    else if (value == 12) {
+        strcpy(value_str, "Q");
+    }
+    else if (value == 13) {
+        strcpy(value_str, "K");
+    }
+    else {
+        // For 2..10, we just convert the integer to string
+        sprintf(value_str, "%d", value);
+    }
 }
 
-Card* get_card(LocationTranslator* lt, Card* seven_rows[7], GetCardType type, bool set_prev_to_null) {
+Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4], GetCardType type, bool set_prev_to_null) {
 	char tab;
 	int index;
 	const char* card_str;
@@ -303,9 +325,43 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], GetCardType type, bo
 		card_str = "  "; // Assume to_card is empty (top card)
 	}
 
-	// tab can be either 'C' or 'F', but we're only dealing with seven_rows in this example
-	if (tab != 'C') {
+	// tab can be either 'C' or 'F'
+	if (tab != 'C' && tab != 'F') {
+		printf("Invalid tab: %c\n", tab);
 		return NULL;
+	}
+
+	// For foundation piles (F1-F4)
+	if (tab == 'F') {
+		// Foundation piles are indexed 1-4
+		if (index < 1 || index > 4) {
+			printf("Invalid foundation index: %d\n", index);
+			return NULL;
+		}
+		
+		// For CardNewLocation, return the top card of the foundation pile
+		if (type == CardNewLocation) {
+			// Return the top card of the foundation pile (or NULL if empty)
+			Card* foundation_card = four_pockets[index - 1];
+			
+			if (foundation_card != NULL) {
+				char value_str[3];
+				get_value_str(foundation_card->value, value_str);
+				char suit_char = "HDCS"[foundation_card->suit - 1];
+				printf("Found foundation card: %s%c (value=%d, suit=%d)\n", 
+					value_str, suit_char, foundation_card->value, foundation_card->suit);
+			} else {
+				printf("Foundation pile F%d is empty\n", index);
+			}
+			
+			return foundation_card;
+		}
+		
+		// For CardToMove, we don't support moving cards from foundation piles
+		if (type == CardToMove) {
+			printf("Moving cards from foundation piles is not supported\n");
+			return NULL;
+		}
 	}
 
 	// index should be between 1 and 7
@@ -316,33 +372,28 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], GetCardType type, bo
 	Card* current_row = seven_rows[index - 1];
 
 	if (type == CardNewLocation) {
-		// Iterate to find the last unhidden card in the row
+		// For CardNewLocation, we want to find the top visible card in the column
+		// In a linked list, this would be the last card in the list
 		Card* prevCard = NULL;
-		Card* lastUnhiddenCard = NULL;
 		
-		while (current_row != NULL) {
-			// If this card is not hidden, update lastUnhiddenCard
-			if (!is_hidden(current_row, seven_rows)) {
-				lastUnhiddenCard = current_row;
-			}
-			
-			// Continue to the next card
+		// If the column is empty, return NULL
+		if (current_row == NULL) {
+			return NULL;
+		}
+		
+		// Traverse to the end of the list (bottom of the column)
+		while (current_row->next != NULL) {
 			prevCard = current_row;
-			if (current_row->next != NULL) {
-				current_row = current_row->next;
-			} else {
-				break;
-			}
+			current_row = current_row->next;
 		}
 		
-		// If we found an unhidden card, return it
-		// Otherwise, return the last card in the row (which should be unhidden)
-		if (lastUnhiddenCard != NULL) {
-			current_row = lastUnhiddenCard;
-		} else {
-			current_row = prevCard;
-		}
-
+		// Debug print to show the card we found
+		char value_str[3];
+		get_value_str(current_row->value, value_str);
+		char suit_char = "HDCS"[current_row->suit - 1];
+		printf("Found destination card: %s%c (value=%d, suit=%d)\n", 
+			value_str, suit_char, current_row->value, current_row->suit);
+		
 		if (set_prev_to_null && prevCard != NULL) {
 			prevCard->next = NULL;
 		}
@@ -353,12 +404,18 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], GetCardType type, bo
 		if (strcmp(card_str, "  ") != 0) {
 			Card* prevCard = NULL;
 			while (current_row != NULL) {
-				char current_card_str[4];
-				char value_char = convert_to_char(current_row->value);
-				sprintf(current_card_str, "%c%c", value_char, "HDCS"[current_row->suit - 1]);
+				char current_card_str[5];   // enough space for "10H" + '\0'
+				char value_str[3];
+				get_value_str(current_row->value, value_str);
+				char suit_char = "HDCS"[current_row->suit - 1];
+				sprintf(current_card_str, "%s%c", value_str, suit_char);
 
-				// Compare the first two characters of the card string
-				if (strncmp(current_card_str, card_str, 2) == 0) {
+				// Debug print for card comparison
+				printf("Comparing card: '%s' with input: '%s'\n", current_card_str, card_str);
+				
+				// Compare the card strings
+				if (strcmp(current_card_str, card_str) == 0) {
+					printf("Match found!\n");
 					if (set_prev_to_null) {
 						if (prevCard != NULL) {
 							prevCard->next = NULL;
@@ -576,8 +633,23 @@ int main()
 		scanf("%s", read_from_console);
 
 		LocationTranslator* lt = translate_command(read_from_console);
-		Card* card_to_move = get_card(lt, seven_rows, CardToMove, false);
-		Card* card_new_location = get_card(lt, seven_rows, CardNewLocation, false);
+		printf("Command: %s, from_tab=%c, from_index=%d, from_card=%s, to_tab=%c, to_index=%d\n", 
+			read_from_console, lt->from_tab, lt->from_index, lt->from_card, lt->to_tab, lt->to_index);
+		
+		Card* card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, false);
+		printf("Card to move: %s\n", lt->from_card);
+		if (card_to_move) {
+			printf("Found card to move: value=%d suit=%d hidden=%d\n", 
+				card_to_move->value, card_to_move->suit, card_to_move->is_hidden);
+		} else {
+			printf("Card to move not found!\n");
+		}
+		
+		Card* card_new_location = get_card(lt, seven_rows, four_pockets, CardNewLocation, false);
+		printf("Destination: value=%d suit=%d hidden=%d\n", 
+			card_new_location ? card_new_location->value : -1,
+			card_new_location ? card_new_location->suit : -1,
+			card_new_location ? card_new_location->is_hidden : -1);
 		
 		if (lt->to_tab == 'C') {
 			// Check if the card to move is hidden
@@ -604,7 +676,7 @@ int main()
 					exposed_card = prev;
 					
 					// Move the card
-					card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
+					card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, true); // set prev to null if rule passed
 					
 					if (card_new_location != NULL) {
 						// If destination has a card, attach to it
@@ -651,7 +723,7 @@ int main()
 						exposed_card = prev;
 						
 						// Move the card
-						card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
+						card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, true); // set prev to null if rule passed
 						four_pockets[lt->to_index - 1] = card_to_move;
 						
 						// If a card was exposed, make it visible and it will remain visible
