@@ -539,39 +539,14 @@ int main()
 		Card* card_new_location = get_card(lt, seven_rows, CardNewLocation, false);
 		
 		if (card_new_location != NULL) {
-			bool rulesPassed = is_move_allowed_to_seven_rows(card_to_move, card_new_location);
-			if (rulesPassed) {
-				// Find the card that will be exposed after moving
-				Card* exposed_card = NULL;
-				Card* current = seven_rows[lt->from_index - 1];
-				Card* prev = NULL;
-				
-				// Find the card before the one being moved
-				while (current != NULL && current != card_to_move) {
-					prev = current;
-					current = current->next;
-				}
-				
-				// If there's a card before the one being moved, it will be exposed
-				exposed_card = prev;
-				
-				// Move the card
-				card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
-				card_new_location->next = card_to_move;
-				
-				// If a card was exposed, make it visible
-				if (exposed_card != NULL) {
-					exposed_card->is_hidden = false;
-				}
-			}
-			else {
-				printf("Move not allowed");
+			// Check if the card to move is hidden
+			bool card_is_hidden = is_hidden(card_to_move, seven_rows);
+			if (card_is_hidden) {
+				printf("Cannot move a hidden card");
 				printf("\n");
 			}
-		}
-		else {
-			if (lt->to_tab == 'F') {
-				bool rulesPassed = is_move_allowed_to_four_pockets(card_to_move, card_new_location);
+			else {
+				bool rulesPassed = is_move_allowed_to_seven_rows(card_to_move, card_new_location);
 				if (rulesPassed) {
 					// Find the card that will be exposed after moving
 					Card* exposed_card = NULL;
@@ -589,7 +564,7 @@ int main()
 					
 					// Move the card
 					card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
-					four_pockets[lt->to_index - 1] = card_to_move;
+					card_new_location->next = card_to_move;
 					
 					// If a card was exposed, make it visible
 					if (exposed_card != NULL) {
@@ -599,6 +574,47 @@ int main()
 				else {
 					printf("Move not allowed");
 					printf("\n");
+				}
+			}
+		}
+		else {
+			if (lt->to_tab == 'F') {
+				// Check if the card to move is hidden
+				bool card_is_hidden = is_hidden(card_to_move, seven_rows);
+				if (card_is_hidden) {
+					printf("Cannot move a hidden card");
+					printf("\n");
+				}
+				else {
+					bool rulesPassed = is_move_allowed_to_four_pockets(card_to_move, card_new_location);
+					if (rulesPassed) {
+						// Find the card that will be exposed after moving
+						Card* exposed_card = NULL;
+						Card* current = seven_rows[lt->from_index - 1];
+						Card* prev = NULL;
+						
+						// Find the card before the one being moved
+						while (current != NULL && current != card_to_move) {
+							prev = current;
+							current = current->next;
+						}
+						
+						// If there's a card before the one being moved, it will be exposed
+						exposed_card = prev;
+						
+						// Move the card
+						card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
+						four_pockets[lt->to_index - 1] = card_to_move;
+						
+						// If a card was exposed, make it visible
+						if (exposed_card != NULL) {
+							exposed_card->is_hidden = false;
+						}
+					}
+					else {
+						printf("Move not allowed");
+						printf("\n");
+					}
 				}
 			}
 		}
