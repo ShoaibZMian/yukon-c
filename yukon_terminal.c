@@ -460,6 +460,12 @@ bool is_hidden(Card* card, Card** seven_rows) {
         return false;
     }
     
+    // Check if this card is at the bottom of the column (has no next card)
+    // If it's at the bottom, it should always be visible
+    if (card->next == NULL) {
+        return false;
+    }
+    
     // Count the total number of cards in this column
     int total_cards = 0;
     current = seven_rows[column_index];
