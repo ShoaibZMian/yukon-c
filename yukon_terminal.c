@@ -316,11 +316,31 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], GetCardType type, bo
 	Card* current_row = seven_rows[index - 1];
 
 	if (type == CardNewLocation) {
-		// Iterate to the last card in the row
+		// Iterate to find the last unhidden card in the row
 		Card* prevCard = NULL;
-		while (current_row != NULL && current_row->next != NULL) {
+		Card* lastUnhiddenCard = NULL;
+		
+		while (current_row != NULL) {
+			// If this card is not hidden, update lastUnhiddenCard
+			if (!is_hidden(current_row, seven_rows)) {
+				lastUnhiddenCard = current_row;
+			}
+			
+			// Continue to the next card
 			prevCard = current_row;
-			current_row = current_row->next;
+			if (current_row->next != NULL) {
+				current_row = current_row->next;
+			} else {
+				break;
+			}
+		}
+		
+		// If we found an unhidden card, return it
+		// Otherwise, return the last card in the row (which should be unhidden)
+		if (lastUnhiddenCard != NULL) {
+			current_row = lastUnhiddenCard;
+		} else {
+			current_row = prevCard;
 		}
 
 		if (set_prev_to_null && prevCard != NULL) {
@@ -391,15 +411,25 @@ bool is_move_allowed_to_seven_rows(Card* from, Card* to) {
 
 bool is_move_allowed_to_four_pockets(Card* from, Card* to) {
 	bool is_allowed = true;
+	
+	// Check if the card has any linked cards (next != NULL)
+	// Only single cards can be moved to Foundation piles
+	if (from->next != NULL) {
+		return false;
+	}
+	
+	// For empty foundation piles, only Aces can be placed
 	if (from->value != 1 && to == NULL) {
 		is_allowed = false;
 	}
 	else {
 		if (to != NULL) {
-			if ((from->value + 1) != to->value) {
+			// Card must be one value higher than the top card
+			if (from->value != to->value + 1) {
 				is_allowed = false;
 			}
-			if (from->suit == to->suit) {
+			// Card must be the same suit as the foundation pile
+			if (from->suit != to->suit) {
 				is_allowed = false;
 			}
 		}
@@ -442,6 +472,11 @@ bool is_hidden(Card* card, Card** seven_rows) {
         return false;
     }
     
+    // If the card has been explicitly unhidden, it should remain unhidden
+    if (card->is_hidden == false) {
+        return false;
+    }
+    
     // Find which column the card is in
     int column_index = -1;
     Card* current = NULL;
@@ -468,6 +503,7 @@ bool is_hidden(Card* card, Card** seven_rows) {
     // Check if this card is at the bottom of the column (has no next card)
     // If it's at the bottom, it should always be visible
     if (card->next == NULL) {
+        card->is_hidden = false; // Ensure bottom cards are always unhidden
         return false;
     }
     
@@ -578,7 +614,7 @@ int main()
 						seven_rows[lt->to_index - 1] = card_to_move;
 					}
 					
-					// If a card was exposed, make it visible
+					// If a card was exposed, make it visible and it will remain visible
 					if (exposed_card != NULL) {
 						exposed_card->is_hidden = false;
 					}
@@ -618,7 +654,7 @@ int main()
 						card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
 						four_pockets[lt->to_index - 1] = card_to_move;
 						
-						// If a card was exposed, make it visible
+						// If a card was exposed, make it visible and it will remain visible
 						if (exposed_card != NULL) {
 							exposed_card->is_hidden = false;
 						}
