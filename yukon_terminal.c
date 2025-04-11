@@ -369,6 +369,11 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], GetCardType type, bo
 }
 
 bool is_move_allowed_to_seven_rows(Card* from, Card* to) {
+    // If the destination is empty, only a king (value 13) can be placed there
+    if (to == NULL) {
+        return from->value == 13;  // Allow only if the card is a king
+    }
+
     bool is_allowed = true;
 
     // Værdien skal være nøjagtigt +1
@@ -538,7 +543,7 @@ int main()
 		Card* card_to_move = get_card(lt, seven_rows, CardToMove, false);
 		Card* card_new_location = get_card(lt, seven_rows, CardNewLocation, false);
 		
-		if (card_new_location != NULL) {
+		if (lt->to_tab == 'C') {
 			// Check if the card to move is hidden
 			bool card_is_hidden = is_hidden(card_to_move, seven_rows);
 			if (card_is_hidden) {
@@ -564,7 +569,14 @@ int main()
 					
 					// Move the card
 					card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
-					card_new_location->next = card_to_move;
+					
+					if (card_new_location != NULL) {
+						// If destination has a card, attach to it
+						card_new_location->next = card_to_move;
+					} else {
+						// If destination is empty, place card directly in the column
+						seven_rows[lt->to_index - 1] = card_to_move;
+					}
 					
 					// If a card was exposed, make it visible
 					if (exposed_card != NULL) {
