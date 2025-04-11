@@ -237,8 +237,8 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 				bool hidden = is_hidden(current_card, seven_rows);
 				
 				if (hidden) {
-					// For hidden cards, display with an 'H' suffix
-					printf("%2s%-1s%1s", values[current_card->value - 1], suits[current_card->suit - 1], "H");
+					// For hidden cards, display as "[]" with proper alignment
+					printf("%2s%-2s", "[", "]");
 				} else {
 					// For visible cards, display normally
 					printf("%2s%-2s", values[current_card->value - 1], suits[current_card->suit - 1]);
