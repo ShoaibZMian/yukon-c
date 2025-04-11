@@ -10,7 +10,7 @@
 typedef struct Card {
 	int value; // 1-13 (Ace, 2, 3..., Jack, Queen, King)
 	int suit; // (1-4, Hearts, Diamonds, Clubs, Spades)
-	bool is_hidden; // TODO implement in deal_cards logic and in print_seven_rows logic, and remember to set last card visible when all are hidden
+	bool is_hidden; // If true, the card is hidden (face down)
 	struct Card* next;
 } Card;
 
@@ -27,6 +27,9 @@ typedef enum {
 	CardToMove,
 	CardNewLocation
 } GetCardType;
+
+// Function prototypes
+bool is_hidden(Card* card, Card** seven_rows);
 
 
 LocationTranslator* translate_command(const char* command) {
@@ -55,6 +58,7 @@ Card* create_deck() {
 			new_card = (Card*)malloc(sizeof(Card)); // malloc is used to allocate memory dynamically.
 			new_card->value = newValue;
 			new_card->suit = suit;
+			new_card->is_hidden = false; // Initialize as visible by default
 			new_card->next = deck;
 			deck = new_card;
 		}
@@ -158,13 +162,21 @@ void deal_cards(Card** deck, Card** seven_rows) {
 	for (int i = 0; i < 7; i++) {
 		if (i == 0) {
 			Card* card = remove_card_from_deck(deck, 0);
+			card->is_hidden = false; // Bottom card is visible
 			card->next = seven_rows[i];
 			seven_rows[i] = card;
 		}
 		else {
 			for (int ii = 0; ii < card_counter; ii++) {
 				Card* card = remove_card_from_deck(deck, 0);
-
+				
+				// Set all cards as hidden initially except the bottom card
+				if (ii == 0) {
+					card->is_hidden = false; // Bottom card is visible
+				} else {
+					card->is_hidden = true; // All other cards are hidden
+				}
+				
 				card->next = seven_rows[i];
 				seven_rows[i] = card;
 			}
@@ -221,7 +233,16 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 				k++;
 			}
 			if (current_card != NULL) {
-				printf("%2s%-2s", values[current_card->value - 1], suits[current_card->suit - 1]);
+				// Check if the card is hidden using the is_hidden function
+				bool hidden = is_hidden(current_card, seven_rows);
+				
+				if (hidden) {
+					// For hidden cards, display with an 'H' suffix
+					printf("%2s%-1s%1s", values[current_card->value - 1], suits[current_card->suit - 1], "H");
+				} else {
+					// For visible cards, display normally
+					printf("%2s%-2s", values[current_card->value - 1], suits[current_card->suit - 1]);
+				}
 			}
 			else {
 				printf("    ");
@@ -236,6 +257,7 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 				k++;
 			}
 			if (current_card != NULL) {
+				// Foundation cards are always visible
 				printf("%2s%-2s", values[current_card->value - 1], suits[current_card->suit - 1]);
 			}
 			else {
@@ -408,6 +430,67 @@ void cleanup_resources(Card* deck, Card* seven_rows[7], Card* four_pockets[4]) {
 
 
 
+// Function to determine if a card should be hidden
+bool is_hidden(Card* card, Card** seven_rows) {
+    // If the card is not in any of the seven rows, it's not hidden
+    if (card == NULL) {
+        return false;
+    }
+    
+    // Find which column the card is in
+    int column_index = -1;
+    Card* current = NULL;
+    
+    for (int i = 0; i < 7; i++) {
+        current = seven_rows[i];
+        while (current != NULL) {
+            if (current == card) {
+                column_index = i;
+                break;
+            }
+            current = current->next;
+        }
+        if (column_index != -1) {
+            break;
+        }
+    }
+    
+    // If card is not found in any column, it's not hidden
+    if (column_index == -1) {
+        return false;
+    }
+    
+    // Count the total number of cards in this column
+    int total_cards = 0;
+    current = seven_rows[column_index];
+    while (current != NULL) {
+        total_cards++;
+        current = current->next;
+    }
+    
+    // Find the position of this card in the column (0 is top, total_cards-1 is bottom)
+    int card_position = 0;
+    current = seven_rows[column_index];
+    while (current != NULL && current != card) {
+        card_position++;
+        current = current->next;
+    }
+    
+    // In Yukon solitaire, the number of hidden cards in each column increases:
+    // C1: 0 hidden cards
+    // C2: 1 hidden card
+    // C3: 2 hidden cards
+    // ...
+    // C7: 6 hidden cards
+    
+    // Calculate how many cards should be hidden in this column
+    int hidden_cards = column_index; // 0 for C1, 1 for C2, etc.
+    
+    // The card is hidden if its position is less than the number of hidden cards
+    // (Remember: position 0 is the top card, which is the last card in the linked list)
+    return (card_position < hidden_cards);
+}
+
 void cleanup_location_translator(LocationTranslator* lt) {
 	if (lt) {
 		free(lt);
@@ -452,8 +535,28 @@ int main()
 		if (card_new_location != NULL) {
 			bool rulesPassed = is_move_allowed_to_seven_rows(card_to_move, card_new_location);
 			if (rulesPassed) {
+				// Find the card that will be exposed after moving
+				Card* exposed_card = NULL;
+				Card* current = seven_rows[lt->from_index - 1];
+				Card* prev = NULL;
+				
+				// Find the card before the one being moved
+				while (current != NULL && current != card_to_move) {
+					prev = current;
+					current = current->next;
+				}
+				
+				// If there's a card before the one being moved, it will be exposed
+				exposed_card = prev;
+				
+				// Move the card
 				card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
 				card_new_location->next = card_to_move;
+				
+				// If a card was exposed, make it visible
+				if (exposed_card != NULL) {
+					exposed_card->is_hidden = false;
+				}
 			}
 			else {
 				printf("Move not allowed");
@@ -464,8 +567,28 @@ int main()
 			if (lt->to_tab == 'F') {
 				bool rulesPassed = is_move_allowed_to_four_pockets(card_to_move, card_new_location);
 				if (rulesPassed) {
+					// Find the card that will be exposed after moving
+					Card* exposed_card = NULL;
+					Card* current = seven_rows[lt->from_index - 1];
+					Card* prev = NULL;
+					
+					// Find the card before the one being moved
+					while (current != NULL && current != card_to_move) {
+						prev = current;
+						current = current->next;
+					}
+					
+					// If there's a card before the one being moved, it will be exposed
+					exposed_card = prev;
+					
+					// Move the card
 					card_to_move = get_card(lt, seven_rows, CardToMove, true); // set prev to null if rule passed
 					four_pockets[lt->to_index - 1] = card_to_move;
+					
+					// If a card was exposed, make it visible
+					if (exposed_card != NULL) {
+						exposed_card->is_hidden = false;
+					}
 				}
 				else {
 					printf("Move not allowed");
