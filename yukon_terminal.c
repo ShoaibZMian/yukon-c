@@ -31,6 +31,8 @@ typedef enum {
 // Function prototypes
 bool is_hidden(Card* card, Card** seven_rows);
 Card* find_last_card(Card* head);
+void cleanup_resources(Card* deck, Card* seven_rows[7], Card* four_pockets[4]);
+void cleanup_location_translator(LocationTranslator* lt);
 
 
 LocationTranslator* translate_command(const char* command) {
@@ -41,16 +43,10 @@ LocationTranslator* translate_command(const char* command) {
 	// C2:5H->C5 where 5H is the card
 	// C3:AS->F1 for foundation piles
 
-	// Debug print to show the raw command
-	printf("Raw command: '%s'\n", command);
-
 	// Try to parse with card specified
 	int parsed = sscanf(command, "%c%d:%4[^->]->%c%d", 
 		&result->from_tab, &result->from_index, result->from_card, 
 		&result->to_tab, &result->to_index);
-
-	// Debug print to show parsing result
-	printf("Parsed with card: %d values\n", parsed);
 
 	if (parsed < 5) {
 		// Try to parse without card specified
@@ -58,14 +54,8 @@ LocationTranslator* translate_command(const char* command) {
 			&result->from_tab, &result->from_index, 
 			&result->to_tab, &result->to_index);
 		
-		printf("Parsed without card: %d values\n", parsed);
 		strcpy(result->from_card, "");  // empty if no card rank typed
 	}
-
-	// Debug print to show final parsed values
-	printf("Final parsed values: from_tab=%c, from_index=%d, from_card='%s', to_tab=%c, to_index=%d\n",
-		result->from_tab, result->from_index, result->from_card, 
-		result->to_tab, result->to_index);
 
 	return result;
 }
@@ -341,7 +331,6 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4
 
 	// tab can be either 'C' or 'F'
 	if (tab != 'C' && tab != 'F') {
-		printf("Invalid tab: %c\n", tab);
 		return NULL;
 	}
 
@@ -349,7 +338,6 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4
 	if (tab == 'F') {
 		// Foundation piles are indexed 1-4
 		if (index < 1 || index > 4) {
-			printf("Invalid foundation index: %d\n", index);
 			return NULL;
 		}
 		
@@ -359,25 +347,17 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4
 			Card* foundation_pile = four_pockets[index - 1];
 			
 			if (foundation_pile == NULL) {
-				printf("Foundation pile F%d is empty\n", index);
 				return NULL;
 			}
 			
 			// Find the last card in the foundation pile (the top card)
 			Card* foundation_card = find_last_card(foundation_pile);
 			
-			char value_str[3];
-			get_value_str(foundation_card->value, value_str);
-			char suit_char = "HDCS"[foundation_card->suit - 1];
-			printf("Found foundation card: %s%c (value=%d, suit=%d)\n", 
-				value_str, suit_char, foundation_card->value, foundation_card->suit);
-			
 			return foundation_card;
 		}
 		
 		// For CardToMove, we don't support moving cards from foundation piles
 		if (type == CardToMove) {
-			printf("Moving cards from foundation piles is not supported\n");
 			return NULL;
 		}
 	}
@@ -405,12 +385,6 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4
 			current_row = current_row->next;
 		}
 		
-		// Debug print to show the card we found
-		char value_str[3];
-		get_value_str(current_row->value, value_str);
-		char suit_char = "HDCS"[current_row->suit - 1];
-		printf("Found destination card: %s%c (value=%d, suit=%d)\n", 
-			value_str, suit_char, current_row->value, current_row->suit);
 		
 		if (set_prev_to_null && prevCard != NULL) {
 			prevCard->next = NULL;
@@ -428,12 +402,8 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4
 				char suit_char = "HDCS"[current_row->suit - 1];
 				sprintf(current_card_str, "%s%c", value_str, suit_char);
 
-				// Debug print for card comparison
-				printf("Comparing card: '%s' with input: '%s'\n", current_card_str, card_str);
-				
 				// Compare the card strings
 				if (strcmp(current_card_str, card_str) == 0) {
-					printf("Match found!\n");
 					if (set_prev_to_null) {
 						if (prevCard != NULL) {
 							prevCard->next = NULL;
@@ -672,16 +642,11 @@ int main()
 		scanf("%s", read_from_console);
 
 		LocationTranslator* lt = translate_command(read_from_console);
-		printf("Command: %s, from_tab=%c, from_index=%d, from_card=%s, to_tab=%c, to_index=%d\n", 
-			read_from_console, lt->from_tab, lt->from_index, lt->from_card, lt->to_tab, lt->to_index);
 		
 		Card* card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, false);
-		printf("Card to move: %s\n", lt->from_card);
 		if (card_to_move) {
-			printf("Found card to move: value=%d suit=%d hidden=%d\n", 
-				card_to_move->value, card_to_move->suit, card_to_move->is_hidden);
+			// Card found, continue with the move
 		} else {
-			printf("Card to move not found!\n");
 			printf("Move not allowed\n");
 			print_seven_rows(seven_rows, four_pockets);
 			cleanup_location_translator(lt);
@@ -689,18 +654,13 @@ int main()
 		}
 		
 		Card* card_new_location = get_card(lt, seven_rows, four_pockets, CardNewLocation, false);
-		printf("Destination: value=%d suit=%d hidden=%d\n", 
-			card_new_location ? card_new_location->value : -1,
-			card_new_location ? card_new_location->suit : -1,
-			card_new_location ? card_new_location->is_hidden : -1);
 		
 		if (lt->to_tab == 'C') {
 			// Update the hidden status of the card
 			is_hidden(card_to_move, seven_rows);
 			// Check if the card to move is hidden
 			if (card_to_move->is_hidden) {
-				printf("Cannot move a hidden card");
-				printf("\n");
+				printf("Cannot move a hidden card\n");
 			}
 			else {
 				bool rulesPassed = is_move_allowed_to_seven_rows(card_to_move, card_new_location);
@@ -736,8 +696,7 @@ int main()
 					}
 				}
 				else {
-					printf("Move not allowed");
-					printf("\n");
+					printf("Move not allowed\n");
 				}
 			}
 		}
@@ -747,8 +706,7 @@ int main()
 				is_hidden(card_to_move, seven_rows);
 				// Check if the card to move is hidden
 				if (card_to_move->is_hidden) {
-					printf("Cannot move a hidden card");
-					printf("\n");
+					printf("Cannot move a hidden card\n");
 				}
 				else {
 					bool rulesPassed = is_move_allowed_to_four_pockets(card_to_move, card_new_location);
@@ -789,8 +747,7 @@ int main()
 						}
 					}
 					else {
-						printf("Move not allowed");
-						printf("\n");
+						printf("Move not allowed\n");
 					}
 				}
 			}
