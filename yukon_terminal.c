@@ -30,6 +30,7 @@ typedef enum {
 
 // Function prototypes
 bool is_hidden(Card* card, Card** seven_rows);
+Card* find_last_card(Card* head);
 
 
 LocationTranslator* translate_command(const char* command) {
@@ -220,10 +221,23 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 
 	int max_cards_in_row = 0;
 
-	// Find the maximum number of cards in a row
+	// Find the maximum number of cards in a row (both columns and foundation piles)
 	for (int i = 0; i < 7; i++) {
 		int count = 0;
 		Card* current_card = seven_rows[i];
+		while (current_card != NULL) {
+			count++;
+			current_card = current_card->next;
+		}
+		if (count > max_cards_in_row) {
+			max_cards_in_row = count;
+		}
+	}
+	
+	// Also check foundation piles
+	for (int i = 0; i < 4; i++) {
+		int count = 0;
+		Card* current_card = four_pockets[i];
 		while (current_card != NULL) {
 			count++;
 			current_card = current_card->next;
@@ -341,18 +355,22 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4
 		
 		// For CardNewLocation, return the top card of the foundation pile
 		if (type == CardNewLocation) {
-			// Return the top card of the foundation pile (or NULL if empty)
-			Card* foundation_card = four_pockets[index - 1];
+			// Get the foundation pile
+			Card* foundation_pile = four_pockets[index - 1];
 			
-			if (foundation_card != NULL) {
-				char value_str[3];
-				get_value_str(foundation_card->value, value_str);
-				char suit_char = "HDCS"[foundation_card->suit - 1];
-				printf("Found foundation card: %s%c (value=%d, suit=%d)\n", 
-					value_str, suit_char, foundation_card->value, foundation_card->suit);
-			} else {
+			if (foundation_pile == NULL) {
 				printf("Foundation pile F%d is empty\n", index);
+				return NULL;
 			}
+			
+			// Find the last card in the foundation pile (the top card)
+			Card* foundation_card = find_last_card(foundation_pile);
+			
+			char value_str[3];
+			get_value_str(foundation_card->value, value_str);
+			char suit_char = "HDCS"[foundation_card->suit - 1];
+			printf("Found foundation card: %s%c (value=%d, suit=%d)\n", 
+				value_str, suit_char, foundation_card->value, foundation_card->suit);
 			
 			return foundation_card;
 		}
@@ -433,7 +451,9 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4
 					current_row = current_row->next;
 				}
 				else {
-					return current_row;
+					// If we've reached the end of the list and haven't found the card,
+					// return NULL to indicate the card wasn't found
+					return NULL;
 				}
 			}
 		}
@@ -492,6 +512,20 @@ bool is_move_allowed_to_four_pockets(Card* from, Card* to) {
 		}
 	}
 	return is_allowed;
+}
+
+// Function to find the last card in a linked list (bottom card in foundation)
+Card* find_last_card(Card* head) {
+    if (head == NULL) {
+        return NULL;
+    }
+    
+    Card* current = head;
+    while (current->next != NULL) {
+        current = current->next;
+    }
+    
+    return current;
 }
 
 void free_card_list(Card* list) {
@@ -592,7 +626,12 @@ bool is_hidden(Card* card, Card** seven_rows) {
     
     // The card is hidden if its position is less than the number of hidden cards
     // (Remember: position 0 is the top card, which is the last card in the linked list)
-    return (card_position < hidden_cards);
+    bool should_be_hidden = (card_position < hidden_cards);
+    
+    // Update the card's is_hidden property to match what we've determined
+    card->is_hidden = should_be_hidden;
+    
+    return should_be_hidden;
 }
 
 void cleanup_location_translator(LocationTranslator* lt) {
@@ -643,6 +682,10 @@ int main()
 				card_to_move->value, card_to_move->suit, card_to_move->is_hidden);
 		} else {
 			printf("Card to move not found!\n");
+			printf("Move not allowed\n");
+			print_seven_rows(seven_rows, four_pockets);
+			cleanup_location_translator(lt);
+			continue;  // Skip the rest of the loop and start over
 		}
 		
 		Card* card_new_location = get_card(lt, seven_rows, four_pockets, CardNewLocation, false);
@@ -652,9 +695,10 @@ int main()
 			card_new_location ? card_new_location->is_hidden : -1);
 		
 		if (lt->to_tab == 'C') {
+			// Update the hidden status of the card
+			is_hidden(card_to_move, seven_rows);
 			// Check if the card to move is hidden
-			bool card_is_hidden = is_hidden(card_to_move, seven_rows);
-			if (card_is_hidden) {
+			if (card_to_move->is_hidden) {
 				printf("Cannot move a hidden card");
 				printf("\n");
 			}
@@ -699,9 +743,10 @@ int main()
 		}
 		else {
 			if (lt->to_tab == 'F') {
+				// Update the hidden status of the card
+				is_hidden(card_to_move, seven_rows);
 				// Check if the card to move is hidden
-				bool card_is_hidden = is_hidden(card_to_move, seven_rows);
-				if (card_is_hidden) {
+				if (card_to_move->is_hidden) {
 					printf("Cannot move a hidden card");
 					printf("\n");
 				}
@@ -724,7 +769,19 @@ int main()
 						
 						// Move the card
 						card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, true); // set prev to null if rule passed
-						four_pockets[lt->to_index - 1] = card_to_move;
+						
+						// Make sure the card's next pointer is NULL since we're only moving a single card
+						card_to_move->next = NULL;
+						
+						// If foundation pile is empty, set it directly
+						if (four_pockets[lt->to_index - 1] == NULL) {
+							four_pockets[lt->to_index - 1] = card_to_move;
+						} else {
+							// Find the last card in the foundation pile
+							Card* last_card = find_last_card(four_pockets[lt->to_index - 1]);
+							// Append the new card to the end of the linked list
+							last_card->next = card_to_move;
+						}
 						
 						// If a card was exposed, make it visible and it will remain visible
 						if (exposed_card != NULL) {
