@@ -15,7 +15,7 @@
 #define CARD_WIDTH 80
 #define CARD_HEIGHT 120
 #define CARD_SPACING 20
-#define CARD_OVERLAP 30  // How much cards overlap in columns
+#define CARD_OVERLAP 40  // How much cards overlap in columns
 
 // Game state
 typedef struct Card {
@@ -477,11 +477,14 @@ void draw_game_board(SDL_Renderer* renderer) {
         SDL_RenderRect(renderer, &foundation_rect);
         
         // Draw cards in foundation piles
-        if (four_pockets[i] != NULL) {
-            Card* current = four_pockets[i];
-            draw_card(renderer, foundation_x, foundation_y, 
-                     current->value, current->suit, false); // Foundation cards are always visible
+        Card* top_of_foundation = find_last_card(four_pockets[i]);
+        if (top_of_foundation != NULL) {
+            draw_card(renderer, foundation_x, foundation_y,
+                      top_of_foundation->value,
+                      top_of_foundation->suit,
+                      false); // foundation cards are always face-up
         }
+        
     }
     
     // Draw cards in the seven columns with cascading effect like in the reference image
