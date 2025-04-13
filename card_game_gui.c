@@ -198,7 +198,7 @@ SDL_Texture* background_texture = NULL;
 void load_textures(SDL_Renderer* renderer) {
     // Load background texture
     // You would replace this with your actual background image path
-    SDL_Surface* background_surface = SDL_LoadBMP("background.bmp");
+    SDL_Surface* background_surface = SDL_LoadBMP("my_background.bmp");
     if (background_surface) {
         background_texture = SDL_CreateTextureFromSurface(renderer, background_surface);
         SDL_DestroySurface(background_surface);
