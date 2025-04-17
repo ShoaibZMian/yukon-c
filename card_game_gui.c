@@ -760,7 +760,6 @@ void process_command(const char* command) {
     if (lt->from_tab == 'F' && lt->to_tab == 'C') {
         // Get the foundation pile
         if (lt->from_index < 1 || lt->from_index > 4) {
-            printf("Invalid foundation index\n");
             cleanup_location_translator(lt);
             return;
         }
@@ -768,7 +767,6 @@ void process_command(const char* command) {
         // Get the source foundation pile
         Card* foundation_pile = four_pockets[lt->from_index - 1];
         if (!foundation_pile) {
-            printf("Foundation pile is empty\n");
             cleanup_location_translator(lt);
             return;
         }
