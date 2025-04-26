@@ -154,9 +154,8 @@ SDL_Texture* background_texture = NULL;
 
 // Function to load card textures
 void load_textures(SDL_Renderer* renderer) {
-    // Load background texture
-    // You would replace this with your actual background image path
-    SDL_Surface* background_surface = SDL_LoadBMP("my_background.bmp");
+    // Load background texture from GUI_assets folder
+    SDL_Surface* background_surface = SDL_LoadBMP("GUI_assets/BG2.bmp");
     if (background_surface) {
         background_texture = SDL_CreateTextureFromSurface(renderer, background_surface);
         SDL_DestroySurface(background_surface);
