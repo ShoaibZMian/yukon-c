@@ -509,6 +509,127 @@ Card* get_card(LocationTranslator* lt, Card* seven_rows[7], Card* four_pockets[4
     return NULL;
 }
 
+bool process_command(const char* command, Card* seven_rows[7], Card* four_pockets[4]) {
+    LocationTranslator* lt = translate_command(command);
+    if (!lt) {
+        return false; // Invalid command format
+    }
+
+    // Foundation to column move
+    if (lt->from_tab == 'F' && lt->to_tab == 'C') {
+        Card* card_to_move = find_last_card(four_pockets[lt->from_index - 1]);
+        Card* destination = find_last_card(seven_rows[lt->to_index - 1]);
+
+        if (!card_to_move || !can_move_from_foundation_to_column(card_to_move, destination)) {
+            cleanup_location_translator(lt);
+            return false;
+        }
+
+        // Remove from foundation
+        Card* pile = four_pockets[lt->from_index - 1];
+        if (pile == card_to_move) {
+            four_pockets[lt->from_index - 1] = NULL;
+        } else {
+            Card* prev = pile;
+            while (prev->next != card_to_move) prev = prev->next;
+            prev->next = NULL;
+        }
+
+        // Add to column
+        card_to_move->next = NULL;
+        if (destination) {
+            destination->next = card_to_move;
+        } else {
+            seven_rows[lt->to_index - 1] = card_to_move;
+        }
+
+        cleanup_location_translator(lt);
+        return true;
+    }
+
+    // Column to column move
+    if (lt->from_tab == 'C' && lt->to_tab == 'C') {
+        Card* card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, false);
+        Card* destination = get_card(lt, seven_rows, four_pockets, CardNewLocation, false);
+
+        if (!card_to_move || is_hidden(card_to_move, seven_rows)) {
+            cleanup_location_translator(lt);
+            return false;
+        }
+
+        bool allowed = destination ? is_move_allowed_to_seven_rows(card_to_move, destination)
+                                   : (card_to_move->value == 13);
+        if (!allowed) {
+            cleanup_location_translator(lt);
+            return false;
+        }
+
+        // Detach sublist
+        Card* prev = NULL;
+        Card* current = seven_rows[lt->from_index - 1];
+        while (current && current != card_to_move) {
+            prev = current;
+            current = current->next;
+        }
+        if (prev) prev->next = NULL;
+        else seven_rows[lt->from_index - 1] = NULL;
+
+        // Attach to destination
+        if (destination) {
+            Card* bottom = destination;
+            while (bottom->next) bottom = bottom->next;
+            bottom->next = card_to_move;
+        } else {
+            seven_rows[lt->to_index - 1] = card_to_move;
+        }
+
+        // Expose previous card
+        if (prev) prev->is_hidden = false;
+
+        cleanup_location_translator(lt);
+        return true;
+    }
+
+    // Column to foundation move
+    if (lt->from_tab == 'C' && lt->to_tab == 'F') {
+        Card* card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, false);
+        Card* destination = find_last_card(four_pockets[lt->to_index - 1]);
+
+        if (!card_to_move || is_hidden(card_to_move, seven_rows) || !is_move_allowed_to_four_pockets(card_to_move, destination)) {
+            cleanup_location_translator(lt);
+            return false;
+        }
+
+        // Detach single card
+        Card* prev = NULL;
+        Card* current = seven_rows[lt->from_index - 1];
+        while (current && current != card_to_move) {
+            prev = current;
+            current = current->next;
+        }
+        if (prev) prev->next = card_to_move->next;
+        else seven_rows[lt->from_index - 1] = card_to_move->next;
+        card_to_move->next = NULL;
+
+        // Attach to foundation
+        if (destination) {
+            destination->next = card_to_move;
+        } else {
+            four_pockets[lt->to_index - 1] = card_to_move;
+        }
+
+        // Expose previous card
+        if (prev) prev->is_hidden = false;
+
+        cleanup_location_translator(lt);
+        return true;
+    }
+
+    cleanup_location_translator(lt);
+    return false; // Command not matched
+}
+
+
 // Clean up the location translator
 void cleanup_location_translator(LocationTranslator* lt) {
     if (lt != NULL) {

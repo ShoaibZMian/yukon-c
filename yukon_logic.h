@@ -41,6 +41,9 @@ bool is_hidden(Card* card, Card** seven_rows);
 void get_value_str(int value, char *value_str);
 bool is_seven_rows_empty(Card* seven_rows[7]);
 
+// Command execution
+bool process_command(const char* command, Card* seven_rows[7], Card* four_pockets[4]);
+
 // Move validation functions
 bool is_move_allowed_to_seven_rows(Card* from, Card* to);
 bool is_move_allowed_to_four_pockets(Card* from, Card* to);

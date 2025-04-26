@@ -30,7 +30,6 @@ float drag_offset_x = 0;
 float drag_offset_y = 0;
 bool is_dragging = false;
 
-// Input buffer for commands removed - GUI is now drag-and-drop only
 
 // Function prototypes for GUI-specific functions
 void cleanup_and_exit(SDL_Window* window, SDL_Renderer* renderer, int exit_code);
@@ -39,7 +38,6 @@ void draw_game_board(SDL_Renderer* renderer);
 void process_mouse_down(int x, int y);
 void process_mouse_up(int x, int y);
 void process_mouse_motion(int x, int y);
-void process_command(const char* command);
 void init_game();
 void cleanup_game();
 void load_textures(SDL_Renderer* renderer);
@@ -100,7 +98,6 @@ int main(int argc, char* argv[]) {
                 if (e.key.key == SDLK_ESCAPE) {
                     quit = true;
                 }
-                // Keyboard command input removed - GUI is now drag-and-drop only
             }
             // Mouse button pressed
             else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
@@ -489,7 +486,7 @@ if (is_dragging && selected_card != NULL) {
     }
 }
 
-    // Command input removed - GUI is now drag-and-drop only
+
 }
 
 void process_mouse_down(int x, int y) {
@@ -597,7 +594,10 @@ void process_mouse_up(int x, int y) {
                         suit_char,
                         i + 1);
 
-                process_command(cmd);
+                        if (!process_command(cmd, seven_rows, four_pockets)) {
+                            // Optionelt: vis fejl i GUI-loggen
+                        }
+                        
                 break;
             }
         }
@@ -624,7 +624,10 @@ void process_mouse_up(int x, int y) {
                         suit_char,
                         i + 1);
 
-                process_command(cmd);
+                        if (!process_command(cmd, seven_rows, four_pockets)) {
+                            // Optionelt: vis fejl i GUI-loggen
+                        }
+                        
             }
             break;  // stop checking other columns
         }
@@ -655,7 +658,10 @@ void process_mouse_up(int x, int y) {
             get_value_str(selected_card->value, value_str);
             char suit_char = "HDCS"[selected_card->suit - 1];
             sprintf(cmd, "C%d:%s%c->F%d", selected_from_column + 1, value_str, suit_char, i + 1);
-            process_command(cmd);
+            if (!process_command(cmd, seven_rows, four_pockets)) {
+                // Optionelt: vis fejl i GUI-loggen
+            }
+            
             break;
         }
     }
@@ -674,214 +680,6 @@ void process_mouse_motion(int x, int y) {
     }
 }
 
-
-
-void process_command(const char* command) {
-    LocationTranslator* lt = translate_command(command);
-
-    // Handle foundation to column move
-    if (lt->from_tab == 'F' && lt->to_tab == 'C') {
-        // Get the foundation pile
-        if (lt->from_index < 1 || lt->from_index > 4) {
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // Get the source foundation pile
-        Card* foundation_pile = four_pockets[lt->from_index - 1];
-        if (!foundation_pile) {
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // Get the last card in the foundation pile
-        Card* card_to_move = find_last_card(foundation_pile);
-
-        // Get the destination card (if any)
-        Card* destination_card = NULL;
-        if (seven_rows[lt->to_index - 1]) {
-            destination_card = find_last_card(seven_rows[lt->to_index - 1]);
-        }
-
-        // Check if move is allowed
-        if (!can_move_from_foundation_to_column(card_to_move, destination_card)) {
-            printf("Move not allowed (rules)\n");
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // Remove card from foundation
-        if (foundation_pile == card_to_move) {
-            // Only card in foundation
-            four_pockets[lt->from_index - 1] = NULL;
-        } else {
-            // Find second-to-last card
-            Card* current = foundation_pile;
-            while (current->next != card_to_move) {
-                current = current->next;
-            }
-            current->next = NULL;
-        }
-
-        // Add to column
-        card_to_move->next = NULL;
-        if (!seven_rows[lt->to_index - 1]) {
-            seven_rows[lt->to_index - 1] = card_to_move;
-        } else {
-            destination_card->next = card_to_move;
-        }
-
-        cleanup_location_translator(lt);
-        return;
-    }
-
-    // Handle column to column move
-    if (lt->from_tab == 'C' && lt->to_tab == 'C') {
-        // (A) Find the "top" card of the sub‐list we want to move
-        Card* card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, false);
-        if (!card_to_move) {
-            printf("Move not allowed (card not found)\n");
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // (B) Check if that top card is hidden
-        if (is_hidden(card_to_move, seven_rows)) {
-            printf("Cannot move a hidden card\n");
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // (C) Find the destination "top" card (if any)
-        Card* card_new_location = get_card(lt, seven_rows, four_pockets, CardNewLocation, false);
-
-        // (D) Also find the 'prev' pointer in the old column so we can detach the sub‐list
-        Card* current = seven_rows[lt->from_index - 1];
-        Card* prev = NULL;
-        while (current && current != card_to_move) {
-            prev = current;
-            current = current->next;
-        }
-        // 'exposed_card' is the one before the sub‐list being moved
-        Card* exposed_card = prev;
-
-        // (E) Check if the destination is empty or has a card on top
-        // We only do the normal rules check on the top card of the sub‐list
-        bool rules_passed = false;
-        if (card_new_location) {
-            rules_passed = is_move_allowed_to_seven_rows(card_to_move, card_new_location);
-        } else {
-            // Destination empty => only King can be placed
-            rules_passed = (card_to_move->value == 13);
-        }
-
-        if (!rules_passed) {
-            printf("Move not allowed (rules)\n");
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // ---- ACTUAL SUB‐LIST REMOVAL ----
-        // 1) Unlink the entire sub‐list from old column
-        if (!prev) {
-            // sub‐list starts at the head
-            seven_rows[lt->from_index - 1] = NULL;
-        } else {
-            // sub‐list is in the middle
-            prev->next = NULL;
-        }
-
-        // 2) Link that entire sub‐list under the destination
-        if (card_new_location) {
-            // Find the bottom of the new location's sub‐list
-            Card* bottom = card_new_location;
-            while (bottom->next) {
-                bottom = bottom->next;
-            }
-            // Append everything from card_to_move downward
-            bottom->next = card_to_move;
-        } else {
-            // The new column is empty
-            seven_rows[lt->to_index - 1] = card_to_move;
-        }
-
-        // (F) Expose the card that was just above the sub‐list
-        if (exposed_card) {
-            exposed_card->is_hidden = false;
-        }
-    }
-
-    // Handle column to foundation move
-    else if (lt->from_tab == 'C' && lt->to_tab == 'F') {
-        // (A) Find the card to move
-        Card* card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, false);
-        if (!card_to_move) {
-            printf("Move not allowed\n");
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // (B) Check if card is hidden
-        if (is_hidden(card_to_move, seven_rows)) {
-            printf("Cannot move a hidden card\n");
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // (C) Find the top card in the foundation pile (if any)
-        Card* foundation_card = NULL;
-        if (four_pockets[lt->to_index - 1]) {
-            foundation_card = find_last_card(four_pockets[lt->to_index - 1]);
-        }
-
-        // (D) Also find 'prev' pointer in old column so we can unlink
-        Card* current = seven_rows[lt->from_index - 1];
-        Card* prev = NULL;
-        while (current && current != card_to_move) {
-            prev = current;
-            current = current->next;
-        }
-        Card* exposed_card = prev;
-
-        // (E) Check rules for single‐card foundation move
-        bool rules_passed = is_move_allowed_to_four_pockets(card_to_move, foundation_card);
-        if (!rules_passed) {
-            printf("Move not allowed (foundation rules)\n");
-            cleanup_location_translator(lt);
-            return;
-        }
-
-        // 1) Unlink single card from old column
-        if (!prev) {
-            seven_rows[lt->from_index - 1] = card_to_move->next;
-        } else {
-            prev->next = card_to_move->next;
-        }
-        card_to_move->next = NULL; // only moving one card
-
-        // 2) Link it into the foundation
-        if (!four_pockets[lt->to_index - 1]) {
-            // If foundation pile is empty
-            four_pockets[lt->to_index - 1] = card_to_move;
-        } else {
-            // Append to the end of foundation
-            Card* last_card = find_last_card(four_pockets[lt->to_index - 1]);
-            last_card->next = card_to_move;
-        }
-
-        // 3) Expose the card behind the moved card
-        if (exposed_card) {
-            exposed_card->is_hidden = false;
-        }
-    }
-
-    // 4) Check for victory
-    if (is_seven_rows_empty(seven_rows)) {
-        printf("\nYou have won!\n");
-    }
-
-    cleanup_location_translator(lt);
-}
 
 
 

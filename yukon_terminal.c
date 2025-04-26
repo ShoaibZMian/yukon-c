@@ -137,113 +137,13 @@ int main()
         printf("Enter command: ");
         scanf("%s", read_from_console);
 
-        // Parse the command
-        LocationTranslator* lt = translate_command(read_from_console);
-
-        // Get the card to move
-        Card* card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, false);
-        if (!card_to_move) {
-            printf("Move not allowed - Card not found\n");
-            print_seven_rows(seven_rows, four_pockets);
-            cleanup_location_translator(lt);
-            continue;
-        }
-
-        // Debug info
-        printf("Found card: %d of suit %d\n", card_to_move->value, card_to_move->suit);
-
-        // Get the destination
-        Card* card_new_location = get_card(lt, seven_rows, four_pockets, CardNewLocation, false);
-
-        // Check if the card is hidden
-        if (is_hidden(card_to_move, seven_rows)) {
-            printf("Cannot move a hidden card\n");
-            print_seven_rows(seven_rows, four_pockets);
-            cleanup_location_translator(lt);
-            continue;
-        }
-
-        // Process move based on destination type
-        if (lt->to_tab == 'C') {
-            // Moving to a column
-            if (is_move_allowed_to_seven_rows(card_to_move, card_new_location)) {
-                // Find the card that will be exposed after moving
-                Card* exposed_card = NULL;
-                Card* current = seven_rows[lt->from_index - 1];
-                Card* prev = NULL;
-
-                // Find the card before the one being moved
-                while (current != NULL && current != card_to_move) {
-                    prev = current;
-                    current = current->next;
-                }
-
-                // If there's a card before the one being moved, it will be exposed
-                exposed_card = prev;
-
-                // Move the card
-                card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, true);
-
-                if (card_new_location != NULL) {
-                    // If destination has a card, attach to it
-                    card_new_location->next = card_to_move;
-                } else {
-                    // If destination is empty, place card directly in the column
-                    seven_rows[lt->to_index - 1] = card_to_move;
-                }
-
-                // If a card was exposed, make it visible
-                if (exposed_card != NULL) {
-                    exposed_card->is_hidden = false;
-                }
-            } else {
-                printf("Move not allowed\n");
-            }
-        } else if (lt->to_tab == 'F') {
-            // Moving to a foundation
-            if (is_move_allowed_to_four_pockets(card_to_move, card_new_location)) {
-                // Find the card that will be exposed after moving
-                Card* exposed_card = NULL;
-                Card* current = seven_rows[lt->from_index - 1];
-                Card* prev = NULL;
-
-                // Find the card before the one being moved
-                while (current != NULL && current != card_to_move) {
-                    prev = current;
-                    current = current->next;
-                }
-
-                // If there's a card before the one being moved, it will be exposed
-                exposed_card = prev;
-
-                // Move the card
-                card_to_move = get_card(lt, seven_rows, four_pockets, CardToMove, true);
-
-                // Make sure the card's next pointer is NULL since we're only moving a single card
-                card_to_move->next = NULL;
-
-                // If foundation pile is empty, set it directly
-                if (four_pockets[lt->to_index - 1] == NULL) {
-                    four_pockets[lt->to_index - 1] = card_to_move;
-                } else {
-                    // Find the last card in the foundation pile
-                    Card* last_card = find_last_card(four_pockets[lt->to_index - 1]);
-                    // Append the new card to the end of the linked list
-                    last_card->next = card_to_move;
-                }
-
-                // If a card was exposed, make it visible
-                if (exposed_card != NULL) {
-                    exposed_card->is_hidden = false;
-                }
-            } else {
-                printf("Move not allowed\n");
-            }
+        // Process the command using the shared logic function
+        if (!process_command(read_from_console, seven_rows, four_pockets)) {
+            printf("Move not allowed\n");
         }
 
         // Display the updated game state
         print_seven_rows(seven_rows, four_pockets);
-        cleanup_location_translator(lt);
     }
 
     // Game won
