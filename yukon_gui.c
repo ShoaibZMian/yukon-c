@@ -8,8 +8,8 @@
 #include "yukon_logic.h" // Include the game logic header
 
 // Window dimensions
-#define WINDOW_WIDTH 1100
-#define WINDOW_HEIGHT 1200
+#define WINDOW_WIDTH 1050
+#define WINDOW_HEIGHT 1000
 
 // Card dimensions
 #define CARD_WIDTH 100   // Adjust these values based on your card images
@@ -148,6 +148,7 @@ void cleanup_and_exit(SDL_Window* window, SDL_Renderer* renderer, int exit_code)
 SDL_Texture* card_textures[13][4] = { NULL }; // [value][suit]
 SDL_Texture* card_back_texture = NULL;
 SDL_Texture* background_texture = NULL;
+SDL_Texture* king_of_hearts_texture = NULL; // Special texture for King of Hearts
 
 // Function to load card textures
 void load_textures(SDL_Renderer* renderer) {
@@ -183,6 +184,16 @@ void load_textures(SDL_Renderer* renderer) {
         card_back_texture = SDL_CreateTextureFromSurface(renderer, card_back_surface);
         SDL_DestroySurface(card_back_surface);
     }
+
+    // Load King of Hearts texture from gui_assets folder
+    SDL_Surface* king_of_hearts_surface = SDL_LoadBMP("gui_assets/king_of_hart.bmp");
+    if (king_of_hearts_surface) {
+        king_of_hearts_texture = SDL_CreateTextureFromSurface(renderer, king_of_hearts_surface);
+        SDL_DestroySurface(king_of_hearts_surface);
+        printf("King of Hearts image loaded successfully!\n");
+    } else {
+        printf("Failed to load King of Hearts image: %s\n", SDL_GetError());
+    }
 }
 
 // Function to free textures
@@ -204,6 +215,11 @@ void free_textures() {
     if (card_back_texture) {
         SDL_DestroyTexture(card_back_texture);
         card_back_texture = NULL;
+    }
+
+    if (king_of_hearts_texture) {
+        SDL_DestroyTexture(king_of_hearts_texture);
+        king_of_hearts_texture = NULL;
     }
 }
 
@@ -242,6 +258,12 @@ void draw_card(SDL_Renderer* renderer, float x, float y, int value, int suit, bo
     }
 
     // For visible cards, proceed as before
+    // Special case for King of Hearts
+    if (value == 13 && suit == 1 && king_of_hearts_texture) {
+        SDL_RenderTexture(renderer, king_of_hearts_texture, NULL, &card_rect);
+        return;
+    }
+
     // Adjust value and suit for array indexing (0-based)
     int value_index = value - 1;
     int suit_index = suit - 1;
@@ -597,7 +619,7 @@ void process_mouse_up(int x, int y) {
                         if (!process_command(cmd, seven_rows, four_pockets)) {
                             // Optionelt: vis fejl i GUI-loggen
                         }
-                        
+
                 break;
             }
         }
@@ -627,7 +649,7 @@ void process_mouse_up(int x, int y) {
                         if (!process_command(cmd, seven_rows, four_pockets)) {
                             // Optionelt: vis fejl i GUI-loggen
                         }
-                        
+
             }
             break;  // stop checking other columns
         }
@@ -661,7 +683,7 @@ void process_mouse_up(int x, int y) {
             if (!process_command(cmd, seven_rows, four_pockets)) {
                 // Optionelt: vis fejl i GUI-loggen
             }
-            
+
             break;
         }
     }
