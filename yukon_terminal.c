@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS 1 // To allow unsafe code
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -168,8 +167,6 @@ int main()
             system("cls");
             printf("Restarting game...\n");
 
-            // Vent et øjeblik for at sikre, at brugeren ser meddelelsen
-            Sleep(1000); // Vent 1 sekund
 
             // Ryd alt data fuldstændigt
             cleanup_resources(deck, seven_rows, four_pockets);
