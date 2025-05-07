@@ -134,7 +134,7 @@ int main()
 
     // Variabler til statuslinjen
     char last_command[50] = "None";
-    char message[100] = "Welcome to Yukon Solitaire";
+    char message[100] = "Welcome to Group 41 Yukon Solitaire";
 
     // Initialize the game using the logic component
     initialize_game(&deck, seven_rows, four_pockets);
@@ -157,6 +157,45 @@ int main()
             printf("\n%s\n", message);
             cleanup_resources(deck, seven_rows, four_pockets);
             return 0;
+        }
+
+        // Check for Q command to restart the game
+        if (strcmp(read_from_console, "Q") == 0 || strcmp(read_from_console, "q") == 0) {
+            strcpy(message, "Restarting the game...");
+            printf("\n%s\n", message);
+
+            // Ryd skærmen helt
+            system("cls");
+            printf("Restarting game...\n");
+
+            // Vent et øjeblik for at sikre, at brugeren ser meddelelsen
+            Sleep(1000); // Vent 1 sekund
+
+            // Ryd alt data fuldstændigt
+            cleanup_resources(deck, seven_rows, four_pockets);
+
+            // Nulstil alle pointere
+            deck = NULL;
+            for (int i = 0; i < 7; i++) {
+                seven_rows[i] = NULL;
+            }
+            for (int i = 0; i < 4; i++) {
+                four_pockets[i] = NULL;
+            }
+
+            // Nulstil statuslinjen
+            strcpy(last_command, "None");
+            strcpy(message, "Welcome to Yukon Solitaire");
+
+            // Initialiser spillet igen
+            initialize_game(&deck, seven_rows, four_pockets);
+
+            // Vis det nye spil
+            print_seven_rows(seven_rows, four_pockets);
+            display_status_line(last_command, message);
+
+            // Fortsæt spillet
+            continue;
         }
 
         // Process the command using the shared logic function
