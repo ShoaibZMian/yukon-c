@@ -116,6 +116,13 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 
 
 
+// Funktion til at vise statuslinjen i bunden
+void display_status_line(const char* last_command, const char* message) {
+    printf("\n----------------------------------------\n");
+    printf("Last Command: %s | Message: %s\n", last_command, message);
+    printf("Input > ");
+}
+
 int main()
 {
     srand(time(NULL));
@@ -125,37 +132,53 @@ int main()
     Card* seven_rows[7] = { NULL };
     Card* four_pockets[4] = { NULL };
 
+    // Variabler til statuslinjen
+    char last_command[50] = "None";
+    char message[100] = "Welcome to Yukon Solitaire";
+
     // Initialize the game using the logic component
     initialize_game(&deck, seven_rows, four_pockets);
 
     // Display the initial game state
     print_seven_rows(seven_rows, four_pockets);
+    display_status_line(last_command, message);
 
     // Main game loop
     while (!is_seven_rows_empty(seven_rows)) {
         char read_from_console[20];
-        printf("Enter command: ");
         scanf("%s", read_from_console);
+
+        // Gem den sidste kommando
+        strcpy(last_command, read_from_console);
 
         // Check for QQ command to quit the program
         if (strcmp(read_from_console, "QQ") == 0 || strcmp(read_from_console, "qq") == 0) {
-            printf("Quitting the game...\n");
+            strcpy(message, "Quitting the game...");
+            printf("\n%s\n", message);
             cleanup_resources(deck, seven_rows, four_pockets);
             return 0;
         }
 
         // Process the command using the shared logic function
         if (!process_command(read_from_console, seven_rows, four_pockets)) {
-            printf("Move not allowed\n");
+            strcpy(message, "Move not allowed");
+        } else {
+            strcpy(message, "Move successful");
         }
 
         // Display the updated game state
+        system("cls"); // Ryd skærmen (Windows)
         print_seven_rows(seven_rows, four_pockets);
+        display_status_line(last_command, message);
     }
 
     // Game won
-    printf("\nYou have won!\n");
-    printf("Press Enter to exit...");
+    strcpy(message, "Congratulations! You have won!");
+    system("cls"); // Ryd skærmen (Windows)
+    print_seven_rows(seven_rows, four_pockets);
+    display_status_line(last_command, message);
+
+    printf("\nPress Enter to exit...");
     getchar(); // Consume newline from previous input
     getchar(); // Wait for Enter key
 
