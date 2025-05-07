@@ -137,6 +137,13 @@ int main()
         printf("Enter command: ");
         scanf("%s", read_from_console);
 
+        // Check for QQ command to quit the program
+        if (strcmp(read_from_console, "QQ") == 0 || strcmp(read_from_console, "qq") == 0) {
+            printf("Quitting the game...\n");
+            cleanup_resources(deck, seven_rows, four_pockets);
+            return 0;
+        }
+
         // Process the command using the shared logic function
         if (!process_command(read_from_console, seven_rows, four_pockets)) {
             printf("Move not allowed\n");
