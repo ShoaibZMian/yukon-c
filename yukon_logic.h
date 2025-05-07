@@ -28,6 +28,7 @@ typedef enum {
 
 // Card and deck management functions
 Card* create_deck();
+Card* create_ordered_deck();
 void shuffle_card(Card** deck);
 Card* get_card_by_index(Card* deck, int deckIndex);
 Card* remove_card_from_deck(Card** deck, int index);

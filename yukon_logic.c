@@ -21,6 +21,39 @@ Card* create_deck() {
     return deck;
 }
 
+// Create an ordered deck with all cards hidden (for LD command)
+Card* create_ordered_deck() {
+    Card* deck = NULL;
+    Card* last = NULL;
+
+    // Create cards in correct suit order: Hearts, Diamonds, Clubs, Spades
+    for (int suit = 1; suit <= 4; suit++) {
+        for (int newValue = 1; newValue <= 13; newValue++) {
+            Card* new_card = (Card*)malloc(sizeof(Card));
+            if (new_card == NULL) {
+                // Handle memory allocation failure
+                free_card_list(deck);
+                return NULL;
+            }
+
+            new_card->value = newValue;
+            new_card->suit = suit;
+            new_card->is_hidden = true; // Initialize as hidden for LD command
+            new_card->next = NULL;
+
+            // Add to the end of the list to maintain order
+            if (deck == NULL) {
+                deck = new_card;
+                last = new_card;
+            } else {
+                last->next = new_card;
+                last = new_card;
+            }
+        }
+    }
+    return deck;
+}
+
 // Shuffle the deck using Fisher-Yates algorithm
 void shuffle_card(Card** deck) {
     int deck_size = 0;
