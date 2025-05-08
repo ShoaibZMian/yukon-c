@@ -782,6 +782,21 @@ void initialize_game(Card** deck, Card** seven_rows, Card** four_pockets) {
     deal_cards(deck, seven_rows);
 }
 
+// Initialize the game with an existing deck (without shuffling)
+void initialize_game_with_deck(Card** deck, Card** seven_rows, Card** four_pockets) {
+    // Initialize seven_rows and four_pockets to NULL
+    for (int i = 0; i < 7; i++) {
+        seven_rows[i] = NULL;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        four_pockets[i] = NULL;
+    }
+
+    // Deal cards to the seven rows
+    deal_cards(deck, seven_rows);
+}
+
 // Save the current game state to a text file
 bool save_game_to_file(const char* filename, Card* deck, Card* seven_rows[7], Card* four_pockets[4]) {
     FILE* file = fopen(filename, "w");
@@ -925,6 +940,8 @@ bool load_game_from_file(const char* filename, Card** deck, Card** seven_rows, C
                     value = 12; // Queen
                 } else if (line[0] == 'K') {
                     value = 13; // King
+                } else if (line[0] == 'T') {
+                    value = 10; // 10 (T)
                 } else if (line[0] >= '1' && line[0] <= '9') {
                     if (line[0] == '1' && len > 2 && line[1] == '0') {
                         value = 10; // 10

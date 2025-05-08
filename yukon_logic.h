@@ -58,6 +58,7 @@ void cleanup_location_translator(LocationTranslator* lt);
 
 // Game initialization
 void initialize_game(Card** deck, Card** seven_rows, Card** four_pockets);
+void initialize_game_with_deck(Card** deck, Card** seven_rows, Card** four_pockets);
 
 // Save and load game state
 bool save_game_to_file(const char* filename, Card* deck, Card* seven_rows[7], Card* four_pockets[4]);

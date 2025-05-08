@@ -186,7 +186,7 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 void display_status_line(const char* last_command, const char* message) {
     printf("\n----------------------------------------\n");
     printf("Last Command: %s | Message: %s\n", last_command, message);
-    printf("Commands: LD (load deck), LD deck (load deck from file), SW (show deck), SD (save deck), SI (interleave shuffle), SI <split> (custom interleave), SR (random shuffle), P (play game), Q (restart), QQ (quit)\n");
+    printf("Commands: LD (load deck), LD deck/default/dup.txt/cards51.txt (load deck from file), SW (show deck), SD (save deck), SI (interleave shuffle), SI <split> (custom interleave), SR (random shuffle), P (play game), Q (restart), QQ (quit)\n");
     printf("Game Commands: C1:AH->C2 (move Ace of Hearts from column 1 to column 2)\n");
     printf("File Commands: SV (save game), LD filename (load saved game)\n");
 }
@@ -297,8 +297,9 @@ int main()
             }
 
             if (load_game_from_file(filename, &deck, seven_rows, four_pockets)) {
-                // Hvis filnavnet er "deck", skal vi behandle det som et deck, ikke et spil
-                if (strcmp(filename, "deck") == 0) {
+                // Hvis filnavnet er "deck", "default", "dup.txt", eller "cards51.txt", skal vi behandle det som et deck, ikke et spil
+                if (strcmp(filename, "deck") == 0 || strcmp(filename, "default") == 0 ||
+                    strcmp(filename, "dup.txt") == 0 || strcmp(filename, "cards51.txt") == 0) {
                     // Vi vil kun have deck'et, ikke spiltilstanden
                     // Ryd eventuel indlæst spiltilstand
                     for (int i = 0; i < 7; i++) {
@@ -446,9 +447,9 @@ int main()
                 display_status_line(last_command, message);
             }
             else if (strcmp(read_from_console, "P") == 0 || strcmp(read_from_console, "p") == 0) {
-                // Initialize the game using the logic component
-                // First clean up any existing game
-                cleanup_resources(deck, seven_rows, four_pockets);
+                // Use the current deck to initialize the game without shuffling
+                // First make a copy of the current deck
+                Card* current_deck = deck;
 
                 // Reset pointers
                 deck = NULL;
@@ -459,8 +460,9 @@ int main()
                     four_pockets[i] = NULL;
                 }
 
-                // Initialize new game
-                initialize_game(&deck, seven_rows, four_pockets);
+                // Initialize game with the current deck
+                deck = current_deck;
+                initialize_game_with_deck(&deck, seven_rows, four_pockets);
 
                 // Update game state
                 game_state = STATE_GAME_STARTED;
@@ -621,9 +623,9 @@ int main()
                 display_status_line(last_command, message);
             }
             else if (strcmp(read_from_console, "P") == 0 || strcmp(read_from_console, "p") == 0) {
-                // Initialize the game using the logic component
-                // First clean up any existing game
-                cleanup_resources(deck, seven_rows, four_pockets);
+                // Use the current deck to initialize the game without shuffling
+                // First make a copy of the current deck
+                Card* current_deck = deck;
 
                 // Reset pointers
                 deck = NULL;
@@ -634,8 +636,9 @@ int main()
                     four_pockets[i] = NULL;
                 }
 
-                // Initialize new game
-                initialize_game(&deck, seven_rows, four_pockets);
+                // Initialize game with the current deck
+                deck = current_deck;
+                initialize_game_with_deck(&deck, seven_rows, four_pockets);
 
                 // Update game state
                 game_state = STATE_GAME_STARTED;
