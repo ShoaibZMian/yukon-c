@@ -15,22 +15,12 @@ typedef enum {
 } GameState;
 
 // Function prototypes for terminal-specific functions
-void print_deck(Card* deck);
 void print_deck_grid(Card* deck, bool show_faces);
 void print_seven_rows(Card** seven_rows, Card** four_pockets);
 
 
 // Terminal-specific functions
 
-// Print deck in standard format (not used in the current implementation)
-void print_deck(Card* deck) {
-	const char* suits[] = { "Hearts", "Diamonds", "Clubs", "Spades" };
-	const char* values[] = { "Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King" };
-	while (deck != NULL)
-	{
-		printf("%s of %s\n", values[deck->value - 1], suits[deck->suit - 1]); deck = deck->next;
-	}
-}
 
 // Print deck in a 7x8 grid format (similar to the game layout)
 void print_deck_grid(Card* deck, bool show_faces) {
