@@ -298,7 +298,7 @@ int main()
 
             if (load_game_from_file(filename, &deck, seven_rows, four_pockets)) {
                 // Hvis filnavnet er "deck", "default", "dup.txt", eller "cards51.txt", skal vi behandle det som et deck, ikke et spil
-                if (strcmp(filename, "deck") == 0 || strcmp(filename, "default") == 0 ||
+                if (strcmp(filename, "testfile.txt") == 0 || strcmp(filename, "default") == 0 ||
                     strcmp(filename, "dup.txt") == 0 || strcmp(filename, "cards51.txt") == 0) {
                     // Vi vil kun have deck'et, ikke spiltilstanden
                     // Ryd eventuel indlæst spiltilstand
