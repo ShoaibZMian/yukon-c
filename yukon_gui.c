@@ -9,7 +9,7 @@
 
 // Window dimensions
 #define WINDOW_WIDTH 1100
-#define WINDOW_HEIGHT 1200
+#define WINDOW_HEIGHT 1050
 
 // Card dimensions
 #define CARD_WIDTH 100   // Adjust these values based on your card images

@@ -196,7 +196,7 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 void display_status_line(const char* last_command, const char* message) {
     printf("\n----------------------------------------\n");
     printf("Last Command: %s | Message: %s\n", last_command, message);
-    printf("Commands: LD (load deck), SW (show deck), OK (start game), Q (restart), QQ (quit)\n");
+    printf("Commands: LD (load deck), LD deck (load deck from file), SW (show deck), SD (save deck), OK (start game), Q (restart), QQ (quit)\n");
     printf("Game Commands: C1:AH->C2 (move Ace of Hearts from column 1 to column 2)\n");
     printf("File Commands: SV (save game), LD filename (load saved game)\n");
 }
@@ -307,14 +307,50 @@ int main()
             }
 
             if (load_game_from_file(filename, &deck, seven_rows, four_pockets)) {
-                // Update game state
-                game_state = STATE_GAME_STARTED;
+                // Hvis filnavnet er "deck", skal vi behandle det som et deck, ikke et spil
+                if (strcmp(filename, "deck") == 0) {
+                    // Vi vil kun have deck'et, ikke spiltilstanden
+                    // Ryd eventuel indlæst spiltilstand
+                    for (int i = 0; i < 7; i++) {
+                        free_card_list(seven_rows[i]);
+                        seven_rows[i] = NULL;
+                    }
+                    for (int i = 0; i < 4; i++) {
+                        free_card_list(four_pockets[i]);
+                        four_pockets[i] = NULL;
+                    }
 
-                strcpy(message, "Game loaded successfully");
+                    // Sørg for at alle kort i deck'et er skjulte
+                    Card* current = deck;
+                    while (current != NULL) {
+                        current->is_hidden = true;
+                        current = current->next;
+                    }
 
-                // Display the loaded game state
-                system("cls");
-                print_seven_rows(seven_rows, four_pockets);
+                    // Opdater spiltilstand
+                    game_state = STATE_DECK_LOADED;
+
+                    // Ryd skærmen
+                    system("cls");
+
+                    // Vis deck'et med skjulte kort i et gitterformat
+                    printf("Loaded deck from file (all cards hidden):\n");
+                    print_deck_grid(deck, false); // false = don't show faces
+                    printf("\nMessage: OK\n");
+
+                    strcpy(message, "OK - Type SW to show deck");
+                } else {
+                    // Normal game load
+                    // Update game state
+                    game_state = STATE_GAME_STARTED;
+
+                    strcpy(message, "Game loaded successfully");
+
+                    // Display the loaded game state
+                    system("cls");
+                    print_seven_rows(seven_rows, four_pockets);
+                }
+
                 display_status_line(last_command, message);
             } else {
                 strcpy(message, "Error loading game");
@@ -392,7 +428,9 @@ int main()
                 // Display status line
                 strcpy(message, "OK - Type SW to show deck");
                 display_status_line(last_command, message);
-            } else {
+            }
+            // "LD deck" kommandoen håndteres nu i den generelle "LD filnavn" kommando
+            else {
                 // Invalid command for this state
                 strcpy(message, "Invalid command. Type LD to load deck or LD filename to load a saved game.");
                 system("cls");
@@ -424,8 +462,81 @@ int main()
             }
         }
         else if (game_state == STATE_DECK_SHOWN) {
-            // In deck shown state, only accept OK command
-            if (strcmp(read_from_console, "OK") == 0 || strcmp(read_from_console, "ok") == 0) {
+            // In deck shown state, accept OK command or SD (Save Deck) command
+            if (strcmp(read_from_console, "SD") == 0 || strcmp(read_from_console, "sd") == 0) {
+                // Save the current deck to a file
+                char filename[100];
+                printf("Enter filename to save deck (default: deck): ");
+
+                // Læs filnavnet med fgets
+                fgets(filename, sizeof(filename), stdin);
+
+                // Fjern newline-tegnet fra slutningen af strengen
+                size_t len = strlen(filename);
+                if (len > 0 && filename[len-1] == '\n') {
+                    filename[len-1] = '\0';
+                }
+
+                // Hvis filnavnet er tomt, brug "deck" som standard
+                if (strlen(filename) == 0) {
+                    strcpy(filename, "deck");
+                }
+
+                // Gem deck'et i det nye format (et kort per linje)
+                FILE* file = fopen(filename, "w");
+                if (!file) {
+                    strcpy(message, "Error opening file for writing");
+                } else {
+                    Card* current = deck;
+                    // Ingen fejlhåndtering nødvendig her
+
+                    while (current != NULL) {
+                        // Konverter værdi til bogstav/tal
+                        char value_str[3];
+                        if (current->value == 1) {
+                            strcpy(value_str, "A");
+                        } else if (current->value == 11) {
+                            strcpy(value_str, "J");
+                        } else if (current->value == 12) {
+                            strcpy(value_str, "Q");
+                        } else if (current->value == 13) {
+                            strcpy(value_str, "K");
+                        } else {
+                            sprintf(value_str, "%d", current->value);
+                        }
+
+                        // Konverter kulør til bogstav
+                        char suit_char;
+                        switch (current->suit) {
+                            case 1: suit_char = 'H'; break; // Hearts
+                            case 2: suit_char = 'D'; break; // Diamonds
+                            case 3: suit_char = 'C'; break; // Clubs
+                            case 4: suit_char = 'S'; break; // Spades
+                            default: suit_char = '?'; break;
+                        }
+
+                        // Skriv kortet til filen
+                        fprintf(file, "%s%c\n", value_str, suit_char);
+
+                        current = current->next;
+                    }
+
+                    fclose(file);
+                    strcpy(message, "Deck saved successfully");
+                }
+
+                // Clear screen
+                system("cls");
+
+                // Print the deck with all cards face-up in a grid format
+                printf("Current deck (all cards face-up):\n");
+                print_deck_grid(deck, true); // true = show faces
+                printf("\nMessage: %s\n", message);
+
+                // Display status line
+                display_status_line(last_command, message);
+            }
+            else if (strcmp(read_from_console, "OK") == 0 || strcmp(read_from_console, "ok") == 0) {
                 // Initialize the game using the logic component
                 // First clean up any existing game
                 cleanup_resources(deck, seven_rows, four_pockets);

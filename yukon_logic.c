@@ -812,6 +812,105 @@ bool load_game_from_file(const char* filename, Card** deck, Card** seven_rows, C
     }
 
     char line[1024];
+
+    // Check if this is a simple card list format (one card per line)
+    // Read the first line to determine the format
+    if (fgets(line, sizeof(line), file)) {
+        // Remove newline if present
+        size_t len = strlen(line);
+        if (len > 0 && line[len-1] == '\n') {
+            line[len-1] = '\0';
+            len--;
+        }
+
+        // If the first line is 2-3 characters (like "AH" or "10S"), it's the simple format
+        if ((len == 2 || len == 3) &&
+            ((line[0] >= '1' && line[0] <= '9') || line[0] == 'A' || line[0] == 'J' || line[0] == 'Q' || line[0] == 'K') &&
+            (line[len-1] == 'H' || line[len-1] == 'D' || line[len-1] == 'C' || line[len-1] == 'S')) {
+
+            // Rewind the file to read from the beginning
+            rewind(file);
+
+            // Read each line as a card
+            Card* last_card = NULL;
+            while (fgets(line, sizeof(line), file)) {
+                // Remove newline if present
+                len = strlen(line);
+                if (len > 0 && line[len-1] == '\n') {
+                    line[len-1] = '\0';
+                    len--;
+                }
+
+                // Skip empty lines
+                if (len == 0) {
+                    continue;
+                }
+
+                // Parse the card notation (e.g., "AH", "10S", etc.)
+                int value = 0;
+                int suit = 0;
+
+                // Parse the value
+                if (line[0] == 'A') {
+                    value = 1; // Ace
+                } else if (line[0] == 'J') {
+                    value = 11; // Jack
+                } else if (line[0] == 'Q') {
+                    value = 12; // Queen
+                } else if (line[0] == 'K') {
+                    value = 13; // King
+                } else if (line[0] >= '1' && line[0] <= '9') {
+                    if (line[0] == '1' && len > 2 && line[1] == '0') {
+                        value = 10; // 10
+                    } else {
+                        value = line[0] - '0'; // 1-9
+                    }
+                } else {
+                    // Invalid card value
+                    continue;
+                }
+
+                // Parse the suit
+                char suit_char = line[len-1];
+                switch (suit_char) {
+                    case 'H': suit = 1; break; // Hearts
+                    case 'D': suit = 2; break; // Diamonds
+                    case 'C': suit = 3; break; // Clubs
+                    case 'S': suit = 4; break; // Spades
+                    default: continue; // Invalid suit
+                }
+
+                // Create the card
+                Card* new_card = (Card*)malloc(sizeof(Card));
+                if (!new_card) {
+                    fclose(file);
+                    return false;
+                }
+
+                new_card->value = value;
+                new_card->suit = suit;
+                new_card->is_hidden = true; // Cards in the deck are hidden by default
+                new_card->next = NULL;
+
+                // Add to the deck
+                if (*deck == NULL) {
+                    *deck = new_card;
+                } else {
+                    last_card->next = new_card;
+                }
+
+                last_card = new_card;
+            }
+
+            fclose(file);
+            return true;
+        }
+
+        // If not the simple format, rewind and continue with the standard format
+        rewind(file);
+    }
+
+    // Standard format processing
     while (fgets(line, sizeof(line), file)) {
         char type;
         int index, card_count;
