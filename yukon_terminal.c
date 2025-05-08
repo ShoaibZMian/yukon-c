@@ -196,7 +196,9 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 void display_status_line(const char* last_command, const char* message) {
     printf("\n----------------------------------------\n");
     printf("Last Command: %s | Message: %s\n", last_command, message);
-    printf("Input > ");
+    printf("Commands: LD (load deck), SW (show deck), OK (start game), Q (restart), QQ (quit)\n");
+    printf("Game Commands: C1:AH->C2 (move Ace of Hearts from column 1 to column 2)\n");
+    printf("File Commands: SV (save game), LD filename (load saved game)\n");
 }
 
 int main()
@@ -223,8 +225,17 @@ int main()
 
     // Main game loop
     while (true) {
-        char read_from_console[20];
-        scanf("%s", read_from_console);
+        char read_from_console[100]; // Større buffer til at håndtere længere kommandoer
+
+        // Læs hele linjen inklusive mellemrum
+        printf("Input > ");
+        fgets(read_from_console, sizeof(read_from_console), stdin);
+
+        // Fjern newline-tegnet fra slutningen af strengen
+        size_t len = strlen(read_from_console);
+        if (len > 0 && read_from_console[len-1] == '\n') {
+            read_from_console[len-1] = '\0';
+        }
 
         // Gem den sidste kommando
         strcpy(last_command, read_from_console);
@@ -235,6 +246,87 @@ int main()
             printf("\n%s\n", message);
             cleanup_resources(deck, seven_rows, four_pockets);
             return 0;
+        }
+
+        // Check for SV command to save the game
+        if (strcmp(read_from_console, "SV") == 0 || strcmp(read_from_console, "sv") == 0) {
+            // Only allow saving when the game has started
+            if (game_state == STATE_GAME_STARTED) {
+                char filename[100];
+                printf("Enter filename to save game: ");
+
+                // Læs filnavnet med fgets
+                fgets(filename, sizeof(filename), stdin);
+
+                // Fjern newline-tegnet fra slutningen af strengen
+                size_t len = strlen(filename);
+                if (len > 0 && filename[len-1] == '\n') {
+                    filename[len-1] = '\0';
+                }
+
+                if (save_game_to_file(filename, deck, seven_rows, four_pockets)) {
+                    strcpy(message, "Game saved successfully");
+                } else {
+                    strcpy(message, "Error saving game");
+                }
+
+                // Display the updated game state
+                system("cls");
+                print_seven_rows(seven_rows, four_pockets);
+                display_status_line(last_command, message);
+            } else {
+                strcpy(message, "Cannot save game in current state");
+                system("cls");
+                display_status_line(last_command, message);
+            }
+            continue;
+        }
+
+        // Check for LD command with a filename to load a saved game
+        if ((strncmp(read_from_console, "LD ", 3) == 0 || strncmp(read_from_console, "ld ", 3) == 0) ||
+            (strncmp(read_from_console, "LD", 2) == 0 && strlen(read_from_console) > 2) ||
+            (strncmp(read_from_console, "ld", 2) == 0 && strlen(read_from_console) > 2)) {
+
+            char* filename;
+            if (read_from_console[2] == ' ') {
+                filename = read_from_console + 3; // Skip "LD " to get the filename
+            } else {
+                filename = read_from_console + 2; // Skip "LD" to get the filename
+            }
+
+            // Clean up any existing game
+            cleanup_resources(deck, seven_rows, four_pockets);
+
+            // Reset pointers
+            deck = NULL;
+            for (int i = 0; i < 7; i++) {
+                seven_rows[i] = NULL;
+            }
+            for (int i = 0; i < 4; i++) {
+                four_pockets[i] = NULL;
+            }
+
+            if (load_game_from_file(filename, &deck, seven_rows, four_pockets)) {
+                // Update game state
+                game_state = STATE_GAME_STARTED;
+
+                strcpy(message, "Game loaded successfully");
+
+                // Display the loaded game state
+                system("cls");
+                print_seven_rows(seven_rows, four_pockets);
+                display_status_line(last_command, message);
+            } else {
+                strcpy(message, "Error loading game");
+
+                // Reset to initial state
+                game_state = STATE_INITIAL;
+
+                // Display status
+                system("cls");
+                display_status_line(last_command, message);
+            }
+            continue;
         }
 
         // Check for Q command to restart the game
@@ -275,7 +367,7 @@ int main()
 
         // Handle commands based on current game state
         if (game_state == STATE_INITIAL) {
-            // In initial state, only accept LD command
+            // In initial state, accept LD command (without filename)
             if (strcmp(read_from_console, "LD") == 0 || strcmp(read_from_console, "ld") == 0) {
                 // Clean up any existing deck
                 if (deck != NULL) {
@@ -302,7 +394,7 @@ int main()
                 display_status_line(last_command, message);
             } else {
                 // Invalid command for this state
-                strcpy(message, "Invalid command. Type LD to load deck.");
+                strcpy(message, "Invalid command. Type LD to load deck or LD filename to load a saved game.");
                 system("cls");
                 display_status_line(last_command, message);
             }

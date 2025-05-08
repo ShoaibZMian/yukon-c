@@ -715,3 +715,203 @@ void initialize_game(Card** deck, Card** seven_rows, Card** four_pockets) {
     // Deal cards to the seven rows
     deal_cards(deck, seven_rows);
 }
+
+// Save the current game state to a text file
+bool save_game_to_file(const char* filename, Card* deck, Card* seven_rows[7], Card* four_pockets[4]) {
+    FILE* file = fopen(filename, "w");
+    if (!file) {
+        return false;
+    }
+
+    // Format for each card: value,suit,is_hidden
+    // Format for each row/foundation: number_of_cards card1 card2 ...
+
+    // Save the seven columns
+    for (int i = 0; i < 7; i++) {
+        Card* current = seven_rows[i];
+        int card_count = 0;
+
+        // Count cards in this column
+        Card* temp = current;
+        while (temp) {
+            card_count++;
+            temp = temp->next;
+        }
+
+        // Write column header
+        fprintf(file, "C%d %d ", i + 1, card_count);
+
+        // Write each card in the column
+        while (current) {
+            fprintf(file, "%d,%d,%d ", current->value, current->suit, current->is_hidden ? 1 : 0);
+            current = current->next;
+        }
+        fprintf(file, "\n");
+    }
+
+    // Save the four foundation piles
+    for (int i = 0; i < 4; i++) {
+        Card* current = four_pockets[i];
+        int card_count = 0;
+
+        // Count cards in this foundation
+        Card* temp = current;
+        while (temp) {
+            card_count++;
+            temp = temp->next;
+        }
+
+        // Write foundation header
+        fprintf(file, "F%d %d ", i + 1, card_count);
+
+        // Write each card in the foundation
+        while (current) {
+            fprintf(file, "%d,%d,%d ", current->value, current->suit, current->is_hidden ? 1 : 0);
+            current = current->next;
+        }
+        fprintf(file, "\n");
+    }
+
+    // Save the remaining deck (usually empty in Yukon)
+    int deck_count = 0;
+    Card* temp = deck;
+    while (temp) {
+        deck_count++;
+        temp = temp->next;
+    }
+
+    fprintf(file, "DECK %d ", deck_count);
+    temp = deck;
+    while (temp) {
+        fprintf(file, "%d,%d,%d ", temp->value, temp->suit, temp->is_hidden ? 1 : 0);
+        temp = temp->next;
+    }
+    fprintf(file, "\n");
+
+    fclose(file);
+    return true;
+}
+
+// Load a game state from a text file
+bool load_game_from_file(const char* filename, Card** deck, Card** seven_rows, Card** four_pockets) {
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        return false;
+    }
+
+    // Clean up any existing game state
+    cleanup_resources(*deck, seven_rows, four_pockets);
+
+    // Initialize to NULL
+    *deck = NULL;
+    for (int i = 0; i < 7; i++) {
+        seven_rows[i] = NULL;
+    }
+    for (int i = 0; i < 4; i++) {
+        four_pockets[i] = NULL;
+    }
+
+    char line[1024];
+    while (fgets(line, sizeof(line), file)) {
+        char type;
+        int index, card_count;
+
+        // Parse the line header
+        if (line[0] == 'C' || line[0] == 'F') {
+            // Column or Foundation
+            type = line[0];
+            sscanf(line + 1, "%d %d", &index, &card_count);
+            index--; // Convert from 1-based to 0-based
+
+            // Find the start of the card data
+            char* card_data = line;
+            while (*card_data != ' ') card_data++;
+            card_data++; // Skip the space after index
+            while (*card_data != ' ') card_data++;
+            card_data++; // Skip the space after card_count
+
+            // Parse each card
+            Card* last_card = NULL;
+            for (int i = 0; i < card_count; i++) {
+                int value, suit, hidden;
+                sscanf(card_data, "%d,%d,%d", &value, &suit, &hidden);
+
+                // Create the card
+                Card* new_card = (Card*)malloc(sizeof(Card));
+                if (!new_card) {
+                    fclose(file);
+                    return false;
+                }
+
+                new_card->value = value;
+                new_card->suit = suit;
+                new_card->is_hidden = hidden ? true : false;
+                new_card->next = NULL;
+
+                // Add to the appropriate list
+                if (type == 'C') {
+                    if (seven_rows[index] == NULL) {
+                        seven_rows[index] = new_card;
+                    } else {
+                        last_card->next = new_card;
+                    }
+                } else { // type == 'F'
+                    if (four_pockets[index] == NULL) {
+                        four_pockets[index] = new_card;
+                    } else {
+                        last_card->next = new_card;
+                    }
+                }
+
+                last_card = new_card;
+
+                // Move to the next card data
+                while (*card_data != ' ' && *card_data != '\n' && *card_data != '\0') card_data++;
+                if (*card_data == ' ') card_data++; // Skip the space
+            }
+        } else if (strncmp(line, "DECK", 4) == 0) {
+            // Deck
+            sscanf(line + 5, "%d", &card_count);
+
+            // Find the start of the card data
+            char* card_data = line + 5;
+            while (*card_data != ' ') card_data++;
+            card_data++; // Skip the space after card_count
+
+            // Parse each card
+            Card* last_card = NULL;
+            for (int i = 0; i < card_count; i++) {
+                int value, suit, hidden;
+                sscanf(card_data, "%d,%d,%d", &value, &suit, &hidden);
+
+                // Create the card
+                Card* new_card = (Card*)malloc(sizeof(Card));
+                if (!new_card) {
+                    fclose(file);
+                    return false;
+                }
+
+                new_card->value = value;
+                new_card->suit = suit;
+                new_card->is_hidden = hidden ? true : false;
+                new_card->next = NULL;
+
+                // Add to the deck
+                if (*deck == NULL) {
+                    *deck = new_card;
+                } else {
+                    last_card->next = new_card;
+                }
+
+                last_card = new_card;
+
+                // Move to the next card data
+                while (*card_data != ' ' && *card_data != '\n' && *card_data != '\0') card_data++;
+                if (*card_data == ' ') card_data++; // Skip the space
+            }
+        }
+    }
+
+    fclose(file);
+    return true;
+}
