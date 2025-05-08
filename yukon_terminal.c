@@ -466,13 +466,16 @@ int main()
                 // Clear screen
                 system("cls");
 
-                // Print the deck with all cards face-up in a grid format
-                printf("Current deck after interleave shuffle (all cards face-up):\n");
-                print_deck_grid(deck, true); // true = show faces
+                // Print the deck with all cards hidden in a grid format
+                printf("Current deck after interleave shuffle (all cards hidden):\n");
+                print_deck_grid(deck, false); // false = don't show faces
                 printf("\nMessage: OK\n");
 
+                // Update game state to reflect that cards are now hidden
+                game_state = STATE_DECK_LOADED;
+
                 // Display status line
-                strcpy(message, "Deck interleaved with default split (26 cards)");
+                strcpy(message, "Deck interleaved with default split (26 cards). Type SW to show deck.");
                 display_status_line(last_command, message);
             }
             else if (strncmp(read_from_console, "SI ", 3) == 0 || strncmp(read_from_console, "si ", 3) == 0) {
@@ -483,14 +486,17 @@ int main()
                 // Clear screen
                 system("cls");
 
-                // Print the deck with all cards face-up in a grid format
-                printf("Current deck after interleave shuffle (all cards face-up):\n");
-                print_deck_grid(deck, true); // true = show faces
+                // Print the deck with all cards hidden in a grid format
+                printf("Current deck after interleave shuffle (all cards hidden):\n");
+                print_deck_grid(deck, false); // false = don't show faces
                 printf("\nMessage: OK\n");
+
+                // Update game state to reflect that cards are now hidden
+                game_state = STATE_DECK_LOADED;
 
                 // Display status line
                 char split_message[100];
-                sprintf(split_message, "Deck interleaved with custom split (%d cards)", split);
+                sprintf(split_message, "Deck interleaved with custom split (%d cards). Type SW to show deck.", split);
                 strcpy(message, split_message);
                 display_status_line(last_command, message);
             }
