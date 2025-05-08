@@ -458,6 +458,12 @@ int main()
                 // Invalid command for this state
                 strcpy(message, "Invalid command. Type SW to show deck.");
                 system("cls");
+
+                // Vis altid deck'et, selv ved ugyldig kommando
+                printf("Current deck (all cards hidden):\n");
+                print_deck_grid(deck, false); // false = don't show faces
+                printf("\nMessage: %s\n", message);
+
                 display_status_line(last_command, message);
             }
         }
@@ -567,9 +573,12 @@ int main()
                 // Invalid command for this state
                 strcpy(message, "Invalid command. Type OK to start game.");
                 system("cls");
+
+                // Vis altid deck'et, selv ved ugyldig kommando
                 printf("Current deck (all cards face-up):\n");
                 print_deck_grid(deck, true); // true = show faces
-                printf("\nMessage: OK\n");
+                printf("\nMessage: %s\n", message);
+
                 display_status_line(last_command, message);
             }
         }
