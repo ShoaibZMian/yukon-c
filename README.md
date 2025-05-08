@@ -69,6 +69,13 @@ In the terminal version, you can move cards using commands like:
 
 In the GUI version, you can drag and drop cards with the mouse.
 
+## Game State and Deck Loading
+
+When loading a deck in the terminal version, please note:
+- If you want to load a specific deck file, you need to manually edit the code in `yukon_terminal.c` around line 301-302
+- This is necessary because when saving game states, the cards are not stored in the same order as in the deck files
+- Look for the section where deck filenames like "testfile.txt", "default", "dup.txt", or "cards51.txt" are checked
+
 ## Development
 
 If you want to modify the game:

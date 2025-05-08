@@ -186,7 +186,7 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 void display_status_line(const char* last_command, const char* message) {
     printf("\n----------------------------------------\n");
     printf("Last Command: %s | Message: %s\n", last_command, message);
-    printf("Commands: LD (load deck), LD deck/default/dup.txt/cards51.txt (load deck from file), SW (show deck), SD (save deck), SI (interleave shuffle), SI <split> (custom interleave), SR (random shuffle), P (play game), Q (restart), QQ (quit)\n");
+    printf("Commands: LD (load Crate deck), LD filename , SW (show deck), SD (save deck), SI , SI <split> , SR (random shuffle), P (play game), Q (restart), QQ (quit)\n");
     printf("Game Commands: C1:AH->C2 (move Ace of Hearts from column 1 to column 2)\n");
     printf("File Commands: SV (save game), LD filename (load saved game)\n");
 }
