@@ -186,7 +186,7 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 void display_status_line(const char* last_command, const char* message) {
     printf("\n----------------------------------------\n");
     printf("Last Command: %s | Message: %s\n", last_command, message);
-    printf("Commands: LD (load deck), LD deck (load deck from file), SW (show deck), SD (save deck), SI (interleave shuffle), SI <split> (custom interleave), P (play game), Q (restart), QQ (quit)\n");
+    printf("Commands: LD (load deck), LD deck (load deck from file), SW (show deck), SD (save deck), SI (interleave shuffle), SI <split> (custom interleave), SR (random shuffle), P (play game), Q (restart), QQ (quit)\n");
     printf("Game Commands: C1:AH->C2 (move Ace of Hearts from column 1 to column 2)\n");
     printf("File Commands: SV (save game), LD filename (load saved game)\n");
 }
@@ -444,9 +444,37 @@ int main()
                 // Display status line
                 strcpy(message, "OK - Type P to start game");
                 display_status_line(last_command, message);
+            }
+            else if (strcmp(read_from_console, "P") == 0 || strcmp(read_from_console, "p") == 0) {
+                // Initialize the game using the logic component
+                // First clean up any existing game
+                cleanup_resources(deck, seven_rows, four_pockets);
+
+                // Reset pointers
+                deck = NULL;
+                for (int i = 0; i < 7; i++) {
+                    seven_rows[i] = NULL;
+                }
+                for (int i = 0; i < 4; i++) {
+                    four_pockets[i] = NULL;
+                }
+
+                // Initialize new game
+                initialize_game(&deck, seven_rows, four_pockets);
+
+                // Update game state
+                game_state = STATE_GAME_STARTED;
+
+                // Clear screen
+                system("cls");
+
+                // Display the initial game state
+                print_seven_rows(seven_rows, four_pockets);
+                strcpy(message, "Game started");
+                display_status_line(last_command, message);
             } else {
                 // Invalid command for this state
-                strcpy(message, "Invalid command. Type SW to show deck.");
+                strcpy(message, "Invalid command. Type SW to show deck or P to start game.");
                 system("cls");
 
                 // Vis altid deck'et, selv ved ugyldig kommando
@@ -475,7 +503,7 @@ int main()
                 game_state = STATE_DECK_LOADED;
 
                 // Display status line
-                strcpy(message, "Deck interleaved with default split (26 cards). Type SW to show deck.");
+                strcpy(message, "Deck interleaved with default split (26 cards). Type SW to show deck or P to start game.");
                 display_status_line(last_command, message);
             }
             else if (strncmp(read_from_console, "SI ", 3) == 0 || strncmp(read_from_console, "si ", 3) == 0) {
@@ -496,7 +524,7 @@ int main()
 
                 // Display status line
                 char split_message[100];
-                sprintf(split_message, "Deck interleaved with custom split (%d cards). Type SW to show deck.", split);
+                sprintf(split_message, "Deck interleaved with custom split (%d cards). Type SW to show deck or P to start game.", split);
                 strcpy(message, split_message);
                 display_status_line(last_command, message);
             }
@@ -571,6 +599,25 @@ int main()
                 printf("\nMessage: %s\n", message);
 
                 // Display status line
+                display_status_line(last_command, message);
+            }
+            else if (strcmp(read_from_console, "SR") == 0 || strcmp(read_from_console, "sr") == 0) {
+                // Random shuffle using Fisher-Yates algorithm
+                shuffle_card(&deck);
+
+                // Clear screen
+                system("cls");
+
+                // Print the deck with all cards hidden in a grid format
+                printf("Current deck after random shuffle (all cards hidden):\n");
+                print_deck_grid(deck, false); // false = don't show faces
+                printf("\nMessage: OK\n");
+
+                // Update game state to reflect that cards are now hidden
+                game_state = STATE_DECK_LOADED;
+
+                // Display status line
+                strcpy(message, "Deck randomly shuffled. Type SW to show deck or P to start game.");
                 display_status_line(last_command, message);
             }
             else if (strcmp(read_from_console, "P") == 0 || strcmp(read_from_console, "p") == 0) {
