@@ -186,7 +186,7 @@ void print_seven_rows(Card** seven_rows, Card** four_pockets) {
 void display_status_line(const char* last_command, const char* message) {
     printf("\n----------------------------------------\n");
     printf("Last Command: %s | Message: %s\n", last_command, message);
-    printf("Commands: LD (load deck), LD deck (load deck from file), SW (show deck), SD (save deck), OK (start game), Q (restart), QQ (quit)\n");
+    printf("Commands: LD (load deck), LD deck (load deck from file), SW (show deck), SD (save deck), SI (interleave shuffle), SI <split> (custom interleave), P (play game), Q (restart), QQ (quit)\n");
     printf("Game Commands: C1:AH->C2 (move Ace of Hearts from column 1 to column 2)\n");
     printf("File Commands: SV (save game), LD filename (load saved game)\n");
 }
@@ -442,7 +442,7 @@ int main()
                 game_state = STATE_DECK_SHOWN;
 
                 // Display status line
-                strcpy(message, "OK - Type OK to start game");
+                strcpy(message, "OK - Type P to start game");
                 display_status_line(last_command, message);
             } else {
                 // Invalid command for this state
@@ -458,8 +458,43 @@ int main()
             }
         }
         else if (game_state == STATE_DECK_SHOWN) {
-            // In deck shown state, accept OK command or SD (Save Deck) command
-            if (strcmp(read_from_console, "SD") == 0 || strcmp(read_from_console, "sd") == 0) {
+            // In deck shown state, accept OK command, SD (Save Deck) command, or SI (Interleave Shuffle) command
+            if (strcmp(read_from_console, "SI") == 0 || strcmp(read_from_console, "si") == 0) {
+                // Interleave shuffle with default split (26 cards)
+                interleave_shuffle(&deck, 26);
+
+                // Clear screen
+                system("cls");
+
+                // Print the deck with all cards face-up in a grid format
+                printf("Current deck after interleave shuffle (all cards face-up):\n");
+                print_deck_grid(deck, true); // true = show faces
+                printf("\nMessage: OK\n");
+
+                // Display status line
+                strcpy(message, "Deck interleaved with default split (26 cards)");
+                display_status_line(last_command, message);
+            }
+            else if (strncmp(read_from_console, "SI ", 3) == 0 || strncmp(read_from_console, "si ", 3) == 0) {
+                // Interleave shuffle with custom split
+                int split = atoi(read_from_console + 3);
+                interleave_shuffle(&deck, split);
+
+                // Clear screen
+                system("cls");
+
+                // Print the deck with all cards face-up in a grid format
+                printf("Current deck after interleave shuffle (all cards face-up):\n");
+                print_deck_grid(deck, true); // true = show faces
+                printf("\nMessage: OK\n");
+
+                // Display status line
+                char split_message[100];
+                sprintf(split_message, "Deck interleaved with custom split (%d cards)", split);
+                strcpy(message, split_message);
+                display_status_line(last_command, message);
+            }
+            else if (strcmp(read_from_console, "SD") == 0 || strcmp(read_from_console, "sd") == 0) {
                 // Save the current deck to a file
                 char filename[100];
                 printf("Enter filename to save deck (default: deck): ");
@@ -532,7 +567,7 @@ int main()
                 // Display status line
                 display_status_line(last_command, message);
             }
-            else if (strcmp(read_from_console, "OK") == 0 || strcmp(read_from_console, "ok") == 0) {
+            else if (strcmp(read_from_console, "P") == 0 || strcmp(read_from_console, "p") == 0) {
                 // Initialize the game using the logic component
                 // First clean up any existing game
                 cleanup_resources(deck, seven_rows, four_pockets);
@@ -561,7 +596,7 @@ int main()
                 display_status_line(last_command, message);
             } else {
                 // Invalid command for this state
-                strcpy(message, "Invalid command. Type OK to start game.");
+                strcpy(message, "Invalid command. Type P to start game.");
                 system("cls");
 
                 // Vis altid deck'et, selv ved ugyldig kommando

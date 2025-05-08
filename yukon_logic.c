@@ -86,6 +86,72 @@ void shuffle_card(Card** deck) {
     }
 }
 
+// Interleave shuffle (SI command) - splits the deck and interleaves cards
+void interleave_shuffle(Card** deck, int split_point) {
+    // Validate input
+    if (*deck == NULL) {
+        return; // Empty deck, nothing to shuffle
+    }
+
+    // Count total cards in the deck
+    int deck_size = 0;
+    Card* current = *deck;
+    while (current != NULL) {
+        deck_size++;
+        current = current->next;
+    }
+
+    // If split_point is invalid, use default (half the deck)
+    if (split_point <= 0 || split_point >= deck_size) {
+        split_point = deck_size / 2;
+    }
+
+    // Split the deck into two parts
+    Card* left_half = *deck;
+    Card* right_half = NULL;
+
+    // Find the split point
+    current = *deck;
+    for (int i = 1; i < split_point && current != NULL; i++) {
+        current = current->next;
+    }
+
+    // If we found the split point, separate the deck
+    if (current != NULL) {
+        right_half = current->next;
+        current->next = NULL;
+    }
+
+    // If either half is empty, no need to interleave
+    if (left_half == NULL || right_half == NULL) {
+        return;
+    }
+
+    // Interleave the two halves
+    Card* result = NULL;
+    Card** tail = &result;
+
+    // Take cards alternately from left and right halves
+    while (left_half != NULL || right_half != NULL) {
+        // Take from left half if available
+        if (left_half != NULL) {
+            *tail = left_half;
+            left_half = left_half->next;
+            tail = &((*tail)->next);
+        }
+
+        // Take from right half if available
+        if (right_half != NULL) {
+            *tail = right_half;
+            right_half = right_half->next;
+            tail = &((*tail)->next);
+        }
+    }
+
+    // Update the deck pointer to the new interleaved deck
+    *deck = result;
+}
+
 // Get a card by its index in the deck
 Card* get_card_by_index(Card* deck, int deckIndex) {
     if (deckIndex < 0) {
